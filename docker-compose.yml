@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  terminal-mcp:
+    image: aybelatchane/mcp-server-terminal:latest
+    # Or build locally:
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile
+    container_name: terminal-mcp
+    restart: unless-stopped
+
+    # MCP uses stdio transport - communicate via stdin/stdout
+    stdin_open: true
+    tty: true
+
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+
+    # Resource limits (optional)
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+    # Environment variables
+    environment:
+      - RUST_LOG=info
+      - DISPLAY=:0  # For visual terminal mode (if X11 forwarding)
+
+    # Volumes for persistent data (optional)
+    volumes:
+      # Mount config file
+      - ./terminal-mcp.yaml:/home/mcp/terminal-mcp.yaml:ro
+      # Mount recordings directory
+      - ./recordings:/home/mcp/recordings
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "pgrep", "terminal-mcp"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+
+    # Network mode
+    network_mode: bridge
+
+    # Labels for organization
+    labels:
+      - "com.docker.compose.project=terminal-mcp"
+      - "com.mcp.server=terminal"

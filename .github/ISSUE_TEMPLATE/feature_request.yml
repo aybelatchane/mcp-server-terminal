@@ -1,0 +1,69 @@
+name: Feature Request
+description: Suggest a new feature or enhancement
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature!
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem description
+      description: What problem does this feature solve?
+      placeholder: I'm frustrated when...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How should this feature work?
+      placeholder: |
+        Add a new MCP tool that...
+        - Does X
+        - Returns Y
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other solutions have you considered?
+      placeholder: I could work around this by...
+    validations:
+      required: false
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use case
+      description: Describe your specific use case
+      placeholder: |
+        I want to use Terminal MCP to...
+        Example: Automate htop monitoring in CI/CD
+    validations:
+      required: true
+
+  - type: dropdown
+    id: willing-to-contribute
+    attributes:
+      label: Would you be willing to contribute?
+      options:
+        - "No"
+        - "Yes, with guidance"
+        - "Yes, I can implement this"
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Any other information that might help
+    validations:
+      required: false

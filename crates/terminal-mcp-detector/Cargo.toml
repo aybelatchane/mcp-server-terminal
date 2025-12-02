@@ -1,0 +1,52 @@
+[package]
+name = "terminal-mcp-detector"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
+description = "Element detection engine for inferring semantic structure from terminal grid"
+
+[dependencies]
+# Internal dependencies
+terminal-mcp-core = { path = "../terminal-mcp-core" }
+terminal-mcp-emulator = { path = "../terminal-mcp-emulator" }
+
+# Async runtime
+tokio = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Pattern matching
+regex = { workspace = true }
+lazy_static = { workspace = true }
+
+# Utility
+chrono = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+[dev-dependencies]
+# Testing
+serde_json = { workspace = true }
+proptest = { workspace = true }
+
+# Benchmarking
+criterion = { workspace = true }
+
+[[bench]]
+name = "detection"
+harness = false

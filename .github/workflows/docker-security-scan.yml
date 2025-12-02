@@ -1,0 +1,74 @@
+name: Docker Security Scan
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+  schedule:
+    # Run weekly security scans on Mondays at 00:00 UTC
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image for scanning
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          load: true
+          tags: terminal-mcp:scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: terminal-mcp:scan
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+
+      - name: Run Trivy vulnerability scanner (table output)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: terminal-mcp:scan
+          format: 'table'
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          exit-code: '1'  # Fail on CRITICAL/HIGH vulnerabilities
+
+      - name: Generate SBOM
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: terminal-mcp:scan
+          format: 'cyclonedx'
+          output: 'sbom.json'
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sbom
+          path: sbom.json
+          retention-days: 30

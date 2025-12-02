@@ -1,0 +1,56 @@
+[package]
+name = "terminal-mcp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "../../README.md"
+description = "MCP Server for terminal-based application interaction - Playwright for terminals"
+
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-{ target }{ archive-suffix }"
+bin-dir = "{ bin }{ binary-ext }"
+pkg-fmt = "tgz"
+
+[[bin]]
+name = "terminal-mcp"
+path = "src/main.rs"
+
+[dependencies]
+# Internal dependencies
+terminal-mcp-core = { path = "../terminal-mcp-core" }
+terminal-mcp-emulator = { path = "../terminal-mcp-emulator" }
+terminal-mcp-session = { path = "../terminal-mcp-session" }
+terminal-mcp-detector = { path = "../terminal-mcp-detector" }
+
+# Async runtime
+tokio = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+schemars = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+
+# MCP SDK
+rmcp = { workspace = true }
+
+# Utility
+uuid = { workspace = true }
+
+[dev-dependencies]
+# Testing
+serde_json = { workspace = true }

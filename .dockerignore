@@ -1,0 +1,40 @@
+# Rust build artifacts
+target/
+**/*.rs.bk
+*.pdb
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+tests/
+benches/
+
+# Examples
+examples/
+
+# Temporary files
+*.tmp
+*.log

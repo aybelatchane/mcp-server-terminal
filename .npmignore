@@ -1,0 +1,37 @@
+# Source code (Rust)
+crates/
+target/
+Cargo.toml
+Cargo.lock
+*.rs
+
+# Development
+.github/
+.gitignore
+.vscode/
+.idea/
+docs/
+benches/
+
+# Testing
+*.profdata
+*.profraw
+*.cast
+
+# Dev files
+check.sh
+CLAUDE.md
+.mcp.json
+
+# Old install script (no longer needed)
+scripts/
+bin/
+
+# Binary cache
+.cache/
+
+# Keep only what's needed for npm:
+# - package.json
+# - cli.js
+# - README.md
+# - LICENSE

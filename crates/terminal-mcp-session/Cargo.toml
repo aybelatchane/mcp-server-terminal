@@ -1,0 +1,47 @@
+[package]
+name = "terminal-mcp-session"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
+description = "Session lifecycle management for Terminal MCP Server"
+
+[dependencies]
+# Internal dependencies
+terminal-mcp-core = { path = "../terminal-mcp-core" }
+terminal-mcp-emulator = { path = "../terminal-mcp-emulator" }
+terminal-mcp-detector = { path = "../terminal-mcp-detector" }
+
+# Async runtime
+tokio = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+# Regex
+regex = { workspace = true }
+
+# UUID
+uuid = { workspace = true }
+
+# Process signals (for killing visual terminal)
+libc = "0.2"
+
+[dev-dependencies]
+# Testing
+serde_json = { workspace = true }

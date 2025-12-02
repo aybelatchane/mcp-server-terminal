@@ -1,0 +1,163 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Build binaries for all platforms
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux x86_64
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz
+          # Linux ARM64
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz
+            cross: true
+          # macOS x86_64
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+          # macOS ARM64
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools
+        if: matrix.cross
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Build binary
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cargo install cross --git https://github.com/cross-rs/cross
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+
+      - name: Package binary
+        shell: bash
+        run: |
+          cd target/${{ matrix.target }}/release
+          if [ "${{ matrix.archive }}" = "tar.gz" ]; then
+            tar -czvf ../../../terminal-mcp-${{ matrix.target }}.tar.gz terminal-mcp
+          else
+            zip ../../../terminal-mcp-${{ matrix.target }}.zip terminal-mcp
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terminal-mcp-${{ matrix.target }}
+          path: terminal-mcp-${{ matrix.target }}.${{ matrix.archive }}
+
+  # Create GitHub Release
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate checksums
+        run: |
+          cd artifacts
+          find . -name "*.tar.gz" -o -name "*.zip" | while read f; do
+            sha256sum "$f" >> ../checksums.txt
+          done
+          mv ../checksums.txt .
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Terminal MCP v${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            artifacts/**/*.tar.gz
+            artifacts/**/*.zip
+            artifacts/checksums.txt
+
+  # Publish to npm
+  npm-publish:
+    name: Publish to npm
+    needs: release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Get version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "version=${{ inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update package.json version
+        run: |
+          npm version ${{ steps.version.outputs.version }} --no-git-tag-version
+
+      - name: Publish to npm
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

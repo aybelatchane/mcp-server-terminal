@@ -1,0 +1,32 @@
+[package]
+name = "terminal-mcp-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
+description = "Core types for Terminal MCP Server - geometry, sessions, elements, keys"
+
+[dependencies]
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+schemars = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+
+# Utility
+uuid = { workspace = true }
+regex = { workspace = true }
+
+[dev-dependencies]
+# Testing
+serde_json = { workspace = true }

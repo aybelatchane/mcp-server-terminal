@@ -1,0 +1,66 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/terminal-mcp",
+    "crates/terminal-mcp-core",
+    "crates/terminal-mcp-session",
+    "crates/terminal-mcp-emulator",
+    "crates/terminal-mcp-detector",
+]
+
+[workspace.package]
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.75"
+authors = ["Ayoub Belayoub <belatchane.ayoub@gmail.com>"]
+license = "MIT"
+repository = "https://github.com/aybelatchane/mcp-server-terminal"
+homepage = "https://github.com/aybelatchane/mcp-server-terminal"
+documentation = "https://github.com/aybelatchane/mcp-server-terminal/tree/main/docs"
+readme = "README.md"
+keywords = ["mcp", "terminal", "tui", "cli", "automation"]
+categories = ["command-line-utilities", "development-tools", "api-bindings"]
+description = "Model Context Protocol server for terminal-based applications"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+schemars = { version = "1.1", features = ["preserve_order", "uuid1"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Terminal/PTY
+portable-pty = "0.8"
+vte = "0.13"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# MCP SDK
+rmcp = { version = "0.9", features = ["server", "transport-io"] }
+
+# Utility
+regex = "1.10"
+lazy_static = "1.4"
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = "0.4"
+
+# Testing
+criterion = "0.5"
+proptest = "1.4"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+
+[profile.bench]
+inherits = "release"

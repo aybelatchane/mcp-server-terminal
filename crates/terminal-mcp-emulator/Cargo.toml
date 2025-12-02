@@ -1,0 +1,45 @@
+[package]
+name = "terminal-mcp-emulator"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation.workspace = true
+keywords.workspace = true
+categories.workspace = true
+readme = "README.md"
+description = "Terminal emulator implementation with VTE parser and PTY management"
+
+[dependencies]
+# Internal dependencies
+terminal-mcp-core = { path = "../terminal-mcp-core" }
+
+# Async runtime
+tokio = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+schemars = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+# Terminal/PTY
+portable-pty = { workspace = true }
+vte = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+
+# Platform-specific
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+# Testing
+serde_json = { workspace = true }

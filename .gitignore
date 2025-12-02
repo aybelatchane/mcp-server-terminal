@@ -1,0 +1,35 @@
+# Rust build artifacts
+/target/
+**/target/
+Cargo.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+*.profdata
+*.profraw
+
+# Benchmarks
+/benches/results/
+
+# Session recordings
+*.cast
+
+# Dev-only files (not for open source)
+check.sh
+CLAUDE.md
+.mcp.json
+
+# npm
+node_modules/
+package-lock.json
+.cache/
