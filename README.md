@@ -1,5 +1,9 @@
 # Terminal MCP Server
 
+[![npm version](https://img.shields.io/npm/v/mcp-server-terminal.svg)](https://www.npmjs.com/package/mcp-server-terminal)
+[![npm downloads](https://img.shields.io/npm/dm/mcp-server-terminal.svg)](https://www.npmjs.com/package/mcp-server-terminal)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 MCP server enabling AI agents to interact with terminal applications through structured Terminal State Tree representation. Works with any AI assistant that supports the [Model Context Protocol](https://modelcontextprotocol.io/).
 
 ## Installation

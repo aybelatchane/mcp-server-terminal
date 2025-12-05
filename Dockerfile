@@ -1,5 +1,5 @@
 # Multi-stage build for minimal final image
-FROM rust:1.82-slim AS builder
+FROM rust:1.85-slim AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y \
