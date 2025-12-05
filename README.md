@@ -25,13 +25,15 @@ cargo build --release
 
 ## Configuration
 
-### Claude Code
+### Claude
+
+#### Claude Code (CLI)
 
 ```bash
 claude mcp add terminal -- npx mcp-server-terminal
 ```
 
-### Claude Desktop
+#### Claude Desktop
 
 Add to `~/.claude.json` (macOS/Linux) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
 
@@ -46,31 +48,157 @@ Add to `~/.claude.json` (macOS/Linux) or `%APPDATA%\Claude\claude_desktop_config
 }
 ```
 
-### Cursor
+---
 
-Add to MCP settings (Settings → MCP Servers):
+### OpenAI Codex
+
+#### Codex CLI
+
+```bash
+codex mcp add terminal -- npx mcp-server-terminal
+```
+
+#### Codex Configuration File
+
+Add to `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.terminal]
+command = "npx"
+args = ["mcp-server-terminal"]
+```
+
+---
+
+### Google Gemini
+
+#### Gemini CLI
+
+```bash
+gemini mcp add terminal npx mcp-server-terminal
+```
+
+---
+
+### VS Code / GitHub Copilot
+
+VS Code 1.101+ supports MCP. Add to your VS Code settings (`settings.json`):
 
 ```json
 {
-  "terminal": {
-    "command": "npx",
-    "args": ["mcp-server-terminal"]
+  "mcp.servers": {
+    "terminal": {
+      "command": "npx",
+      "args": ["mcp-server-terminal"]
+    }
   }
 }
 ```
 
+---
+
+### Cursor
+
+Add to `~/.cursor/mcp.json` or `.cursor/mcp.json` in your project:
+
+```json
+{
+  "mcpServers": {
+    "terminal": {
+      "command": "npx",
+      "args": ["mcp-server-terminal"]
+    }
+  }
+}
+```
+
+---
+
+### Windsurf
+
+Add to `~/.codeium/windsurf/mcp_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "terminal": {
+      "command": "npx",
+      "args": ["mcp-server-terminal"]
+    }
+  }
+}
+```
+
+---
+
+### Zed
+
+Add to your Zed settings (Preferences → Settings):
+
+```json
+{
+  "context_servers": {
+    "terminal": {
+      "command": {
+        "path": "npx",
+        "args": ["mcp-server-terminal"]
+      }
+    }
+  }
+}
+```
+
+---
+
+### Cline (VS Code Extension)
+
+Click MCP Servers icon → Configure → Advanced MCP Settings, then add:
+
+```json
+{
+  "mcpServers": {
+    "terminal": {
+      "command": "npx",
+      "args": ["mcp-server-terminal"]
+    }
+  }
+}
+```
+
+---
+
+### AWS Bedrock
+
+Add to your Bedrock agent MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "terminal": {
+      "command": "npx",
+      "args": ["mcp-server-terminal"]
+    }
+  }
+}
+```
+
+---
+
 ### Other MCP Clients
 
 For any MCP-compatible client, configure the server with:
+
 - **Command**: `npx`
 - **Args**: `["mcp-server-terminal"]`
 
 Or if using the binary directly:
+
 - **Command**: `terminal-mcp`
 
 ## Usage
 
 Ask your AI agent:
+
 - *"Create a terminal session running htop"*
 - *"Take a snapshot of the terminal"*
 - *"Press the down arrow key"*
