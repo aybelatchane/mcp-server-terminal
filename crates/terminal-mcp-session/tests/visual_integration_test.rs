@@ -19,6 +19,7 @@ fn test_create_headless_session() {
 }
 
 #[test]
+#[ignore = "Requires display and terminal emulator (run locally with --ignored)"]
 fn test_create_visual_session_auto() {
     // Try to create a visual session with auto-detect terminal
     let result = Session::create_with_mode(
@@ -48,6 +49,7 @@ fn test_create_visual_session_auto() {
 }
 
 #[test]
+#[ignore = "Requires display and terminal emulator (run locally with --ignored)"]
 fn test_create_visual_session_specific_terminal() {
     // Try to create with a specific terminal that likely doesn't exist
     let result = Session::create_with_mode(
