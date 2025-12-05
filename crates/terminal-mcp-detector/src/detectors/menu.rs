@@ -1,6 +1,6 @@
 //! Menu detector for terminal UI menus with selection state.
 
-use terminal_mcp_core::{Bounds, Element, MenuItem, Position};
+use terminal_mcp_core::{Bounds, Color, Element, MenuItem, Position};
 use terminal_mcp_emulator::Grid;
 
 use crate::detection::{Confidence, DetectedElement, DetectionContext, ElementDetector};
@@ -73,6 +73,27 @@ impl MenuDetector {
         non_space_count > 0 && match_count > non_space_count / 2
     }
 
+    /// Check if a row has non-default background color (for style-based selection).
+    fn row_has_background_color(&self, grid: &Grid, row: u16, region: &Bounds) -> bool {
+        let mut bg_count = 0;
+        let mut non_space_count = 0;
+
+        for col_offset in 0..region.width {
+            let col = region.col + col_offset;
+            if let Some(cell) = grid.cell(row, col) {
+                if cell.character != ' ' {
+                    non_space_count += 1;
+                    if cell.bg != Color::Default {
+                        bg_count += 1;
+                    }
+                }
+            }
+        }
+
+        // If more than 50% of non-space cells have background color, row has it
+        non_space_count > 0 && bg_count > non_space_count / 2
+    }
+
     /// Strategy 1: Reverse video detection (highest confidence).
     fn detect_by_reverse_video(
         &self,
@@ -105,6 +126,48 @@ impl MenuDetector {
         }
 
         // Only return if we actually found reverse video
+        if items.len() >= self.min_items {
+            selected_idx.map(|idx| (idx, items))
+        } else {
+            None
+        }
+    }
+
+    /// Strategy 1b: Background color detection (high confidence).
+    ///
+    /// Detects selection based on non-default background colors.
+    /// Used by TUIs like Bubble Tea that highlight selections with background color.
+    fn detect_by_background_color(
+        &self,
+        grid: &Grid,
+        region: &Bounds,
+    ) -> Option<(usize, Vec<MenuItem>)> {
+        let mut items = Vec::new();
+        let mut selected_idx = None;
+
+        for row_offset in 0..region.height {
+            let row = region.row + row_offset;
+            let text = self.extract_row_text(grid, row, region.col, region.width);
+
+            if text.trim().is_empty() {
+                continue;
+            }
+
+            // Check if row has non-default background color
+            let has_bg_color = self.row_has_background_color(grid, row, region);
+
+            if has_bg_color {
+                selected_idx = Some(items.len());
+            }
+
+            items.push(MenuItem {
+                ref_id: String::new(),
+                text: text.trim().to_string(),
+                selected: has_bg_color,
+            });
+        }
+
+        // Only return if we found background color selection
         if items.len() >= self.min_items {
             selected_idx.map(|idx| (idx, items))
         } else {
@@ -215,6 +278,7 @@ impl MenuDetector {
         // Try strategies in order of confidence
         let result = self
             .detect_by_reverse_video(grid, region)
+            .or_else(|| self.detect_by_background_color(grid, region))
             .or_else(|| self.detect_by_prefix_marker(grid, region))
             .or_else(|| self.detect_by_cursor(grid, region, cursor));
 

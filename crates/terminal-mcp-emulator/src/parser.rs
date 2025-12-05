@@ -373,8 +373,45 @@ impl Perform for Parser {
     }
 
     /// CSI (Control Sequence Introducer) dispatch.
-    fn csi_dispatch(&mut self, params: &Params, _intermediates: &[u8], _ignore: bool, c: char) {
+    fn csi_dispatch(&mut self, params: &Params, intermediates: &[u8], _ignore: bool, c: char) {
+        // Check for private mode sequences (CSI ? Pn h/l)
+        let is_private_mode = intermediates.contains(&b'?');
+
         match c {
+            // Private mode set (DECSET) / reset (DECRST)
+            'h' | 'l' if is_private_mode => {
+                let mode = params.iter().next().map(|p| p[0]).unwrap_or(0);
+                let enable = c == 'h';
+
+                match mode {
+                    // Alternate screen buffer (switch on 'h', restore on 'l')
+                    1049 | 47 | 1047 => {
+                        if enable {
+                            // Clear grid when switching to alternate buffer
+                            self.grid.clear();
+                        }
+                        // Note: We don't maintain a separate buffer, just clear on switch
+                    }
+
+                    // Cursor visibility (25)
+                    25 => {
+                        // Cursor visibility - no-op for now (we don't track this)
+                    }
+
+                    // Auto-wrap mode (7)
+                    7 => {
+                        // Auto-wrap - no-op for now
+                    }
+
+                    _ => {} // Ignore other private modes
+                }
+            }
+
+            // Normal mode set/reset (non-private)
+            'h' | 'l' => {
+                // Regular mode changes - not implemented
+            }
+
             // Cursor Up (CUU)
             'A' => {
                 let n = params.iter().next().map(|p| p[0]).unwrap_or(1);

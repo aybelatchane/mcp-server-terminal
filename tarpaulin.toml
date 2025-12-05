@@ -1,0 +1,25 @@
+[default]
+# Target directory
+target-dir = "target"
+# Output formats
+out = ["Html", "Lcov"]
+# Output directory
+output-dir = "coverage"
+# Timeout per test in seconds
+timeout = "120"
+# Skip certain packages
+exclude = []
+# Workspace members to include
+packages = [
+    "terminal-mcp",
+    "terminal-mcp-core",
+    "terminal-mcp-emulator",
+    "terminal-mcp-detector",
+    "terminal-mcp-session",
+]
+
+[ci]
+# CI-specific settings
+out = ["Xml"]
+output-dir = "coverage"
+# Use Cobertura format for CI

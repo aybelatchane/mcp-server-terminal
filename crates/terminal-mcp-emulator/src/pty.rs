@@ -199,7 +199,8 @@ impl PtyHandle {
 
             let output = Command::new("tmux")
                 .arg("capture-pane")
-                .arg("-p")
+                .arg("-p") // Print to stdout
+                .arg("-e") // Include escape sequences for colors/styles
                 .arg("-t")
                 .arg(session)
                 .output()

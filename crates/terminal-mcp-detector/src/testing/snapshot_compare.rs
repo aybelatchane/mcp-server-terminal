@@ -3,7 +3,6 @@
 //! Compares Terminal State Tree snapshots to detect changes in element detection.
 
 use std::collections::HashMap;
-use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
@@ -19,17 +18,35 @@ pub enum ElementChange {
     /// Element was removed (was in expected)
     Removed,
     /// Element type changed
-    TypeChanged { expected: String, actual: String },
+    TypeChanged {
+        /// Expected element type
+        expected: String,
+        /// Actual element type
+        actual: String,
+    },
     /// Element bounds changed
-    BoundsChanged { expected: Bounds, actual: Bounds },
+    BoundsChanged {
+        /// Expected bounds
+        expected: Bounds,
+        /// Actual bounds
+        actual: Bounds,
+    },
     /// Element content changed (label, items, etc.)
     ContentChanged {
+        /// Field name that changed
         field: String,
+        /// Expected field value
         expected: String,
+        /// Actual field value
         actual: String,
     },
     /// Element confidence level changed
-    ConfidenceChanged { expected: String, actual: String },
+    ConfidenceChanged {
+        /// Expected confidence level
+        expected: String,
+        /// Actual confidence level
+        actual: String,
+    },
 }
 
 /// Difference for a single element.
@@ -222,6 +239,7 @@ impl SnapshotDiff {
 }
 
 /// Snapshot matcher for comparing detection results.
+#[derive(Default)]
 pub struct SnapshotMatcher {
     /// Tolerance for bounds comparison (in cells)
     pub bounds_tolerance: u16,
@@ -229,16 +247,6 @@ pub struct SnapshotMatcher {
     pub compare_confidence: bool,
     /// Whether to compare ref_ids (usually false for golden comparison)
     pub compare_ref_ids: bool,
-}
-
-impl Default for SnapshotMatcher {
-    fn default() -> Self {
-        Self {
-            bounds_tolerance: 0,
-            compare_confidence: false,
-            compare_ref_ids: false,
-        }
-    }
 }
 
 impl SnapshotMatcher {
@@ -270,14 +278,14 @@ impl SnapshotMatcher {
         diff.stats.actual_count = actual.len();
 
         // Build maps by element type and approximate position
-        let expected_map = self.build_element_map(expected);
+        let _expected_map = self.build_element_map(expected);
         let actual_map = self.build_element_map(actual);
 
         // Track which elements have been matched
         let mut matched_actual: Vec<bool> = vec![false; actual.len()];
 
         // Compare expected elements
-        for (i, exp) in expected.iter().enumerate() {
+        for exp in expected.iter() {
             let exp_key = self.element_key(exp);
 
             if let Some(actual_indices) = actual_map.get(&exp_key) {
