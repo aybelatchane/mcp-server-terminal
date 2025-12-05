@@ -125,7 +125,7 @@ jobs:
             ${{ runner.os }}-cargo-coverage-
 
       - name: Generate coverage report
-        run: cargo tarpaulin --config tarpaulin.toml --profile ci
+        run: cargo tarpaulin --config tarpaulin.toml --out Xml --output-dir coverage
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4

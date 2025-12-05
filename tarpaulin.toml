@@ -2,11 +2,11 @@
 # Target directory
 target-dir = "target"
 # Output formats
-out = ["Html", "Lcov"]
+out = ["Html", "Lcov", "Xml"]
 # Output directory
 output-dir = "coverage"
 # Timeout per test in seconds
-timeout = "120"
+timeout = "120s"
 # Skip certain packages
 exclude = []
 # Workspace members to include
@@ -17,9 +17,3 @@ packages = [
     "terminal-mcp-detector",
     "terminal-mcp-session",
 ]
-
-[ci]
-# CI-specific settings
-out = ["Xml"]
-output-dir = "coverage"
-# Use Cobertura format for CI
