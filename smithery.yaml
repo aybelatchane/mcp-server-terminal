@@ -1,0 +1,23 @@
+# Smithery configuration for Terminal MCP Server
+# See: https://smithery.ai/docs/config
+
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      headless:
+        type: boolean
+        description: Run in headless mode without visual terminal windows
+        default: false
+    required: []
+  commandFunction: |
+    (config) => ({
+      command: "npx",
+      args: config.headless
+        ? ["-y", "mcp-server-terminal", "--headless"]
+        : ["-y", "mcp-server-terminal"],
+      env: {
+        DISPLAY: ":0"
+      }
+    })
