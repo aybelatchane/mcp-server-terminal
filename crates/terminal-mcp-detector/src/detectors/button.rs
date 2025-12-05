@@ -122,9 +122,7 @@ impl ButtonDetector {
                     || label.contains('「')
                     || label.contains('」');
 
-                if !label.is_empty()
-                    && label.len() <= self.max_label_length
-                    && !contains_delimiters
+                if !label.is_empty() && label.len() <= self.max_label_length && !contains_delimiters
                 {
                     let button_width = (label_end + pattern.close.len() - abs_start) as u16;
                     let button_end = abs_start + button_width as usize;

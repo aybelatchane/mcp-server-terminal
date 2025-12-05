@@ -19,15 +19,9 @@ pub enum ElementChange {
     /// Element was removed (was in expected)
     Removed,
     /// Element type changed
-    TypeChanged {
-        expected: String,
-        actual: String,
-    },
+    TypeChanged { expected: String, actual: String },
     /// Element bounds changed
-    BoundsChanged {
-        expected: Bounds,
-        actual: Bounds,
-    },
+    BoundsChanged { expected: Bounds, actual: Bounds },
     /// Element content changed (label, items, etc.)
     ContentChanged {
         field: String,
@@ -35,10 +29,7 @@ pub enum ElementChange {
         actual: String,
     },
     /// Element confidence level changed
-    ConfidenceChanged {
-        expected: String,
-        actual: String,
-    },
+    ConfidenceChanged { expected: String, actual: String },
 }
 
 /// Difference for a single element.
@@ -134,7 +125,10 @@ impl SnapshotDiff {
         html.push_str("</style>\n</head>\n<body>\n");
 
         html.push_str("<h1>Snapshot Diff Report</h1>\n");
-        html.push_str(&format!("<p><strong>Status:</strong> {}</p>\n", self.summary()));
+        html.push_str(&format!(
+            "<p><strong>Status:</strong> {}</p>\n",
+            self.summary()
+        ));
 
         // Stats
         html.push_str("<div class=\"section\">\n");
@@ -420,7 +414,11 @@ impl SnapshotMatcher {
     }
 
     /// Compare two elements and return list of changes.
-    fn compare_elements(&self, expected: &DetectedElement, actual: &DetectedElement) -> Vec<ElementChange> {
+    fn compare_elements(
+        &self,
+        expected: &DetectedElement,
+        actual: &DetectedElement,
+    ) -> Vec<ElementChange> {
         let mut changes = Vec::new();
 
         // Compare bounds
@@ -446,9 +444,21 @@ impl SnapshotMatcher {
     }
 
     /// Compare element-specific content.
-    fn compare_element_content(&self, expected: &Element, actual: &Element, changes: &mut Vec<ElementChange>) {
+    fn compare_element_content(
+        &self,
+        expected: &Element,
+        actual: &Element,
+        changes: &mut Vec<ElementChange>,
+    ) {
         match (expected, actual) {
-            (Element::Button { label: exp_label, .. }, Element::Button { label: act_label, .. }) => {
+            (
+                Element::Button {
+                    label: exp_label, ..
+                },
+                Element::Button {
+                    label: act_label, ..
+                },
+            ) => {
                 if exp_label != act_label {
                     changes.push(ElementChange::ContentChanged {
                         field: "label".to_string(),
@@ -457,8 +467,18 @@ impl SnapshotMatcher {
                     });
                 }
             }
-            (Element::Checkbox { label: exp_label, checked: exp_checked, .. },
-             Element::Checkbox { label: act_label, checked: act_checked, .. }) => {
+            (
+                Element::Checkbox {
+                    label: exp_label,
+                    checked: exp_checked,
+                    ..
+                },
+                Element::Checkbox {
+                    label: act_label,
+                    checked: act_checked,
+                    ..
+                },
+            ) => {
                 if exp_label != act_label {
                     changes.push(ElementChange::ContentChanged {
                         field: "label".to_string(),
@@ -474,8 +494,18 @@ impl SnapshotMatcher {
                     });
                 }
             }
-            (Element::Input { value: exp_value, cursor_pos: exp_cursor, .. },
-             Element::Input { value: act_value, cursor_pos: act_cursor, .. }) => {
+            (
+                Element::Input {
+                    value: exp_value,
+                    cursor_pos: exp_cursor,
+                    ..
+                },
+                Element::Input {
+                    value: act_value,
+                    cursor_pos: act_cursor,
+                    ..
+                },
+            ) => {
                 if exp_value != act_value {
                     changes.push(ElementChange::ContentChanged {
                         field: "value".to_string(),
@@ -491,8 +521,18 @@ impl SnapshotMatcher {
                     });
                 }
             }
-            (Element::Menu { items: exp_items, selected: exp_selected, .. },
-             Element::Menu { items: act_items, selected: act_selected, .. }) => {
+            (
+                Element::Menu {
+                    items: exp_items,
+                    selected: exp_selected,
+                    ..
+                },
+                Element::Menu {
+                    items: act_items,
+                    selected: act_selected,
+                    ..
+                },
+            ) => {
                 if exp_items != act_items {
                     changes.push(ElementChange::ContentChanged {
                         field: "items".to_string(),
@@ -508,8 +548,14 @@ impl SnapshotMatcher {
                     });
                 }
             }
-            (Element::ProgressBar { percent: exp_pct, .. },
-             Element::ProgressBar { percent: act_pct, .. }) => {
+            (
+                Element::ProgressBar {
+                    percent: exp_pct, ..
+                },
+                Element::ProgressBar {
+                    percent: act_pct, ..
+                },
+            ) => {
                 if exp_pct != act_pct {
                     changes.push(ElementChange::ContentChanged {
                         field: "percent".to_string(),
@@ -518,8 +564,18 @@ impl SnapshotMatcher {
                     });
                 }
             }
-            (Element::Table { headers: exp_headers, rows: exp_rows, .. },
-             Element::Table { headers: act_headers, rows: act_rows, .. }) => {
+            (
+                Element::Table {
+                    headers: exp_headers,
+                    rows: exp_rows,
+                    ..
+                },
+                Element::Table {
+                    headers: act_headers,
+                    rows: act_rows,
+                    ..
+                },
+            ) => {
                 if exp_headers != act_headers {
                     changes.push(ElementChange::ContentChanged {
                         field: "headers".to_string(),
@@ -580,10 +636,7 @@ mod tests {
 
     #[test]
     fn test_identical_snapshots() {
-        let expected = vec![
-            create_button("OK", 5, 10),
-            create_button("Cancel", 5, 20),
-        ];
+        let expected = vec![create_button("OK", 5, 10), create_button("Cancel", 5, 20)];
         let actual = expected.clone();
 
         let matcher = SnapshotMatcher::new();
@@ -596,10 +649,7 @@ mod tests {
     #[test]
     fn test_added_element() {
         let expected = vec![create_button("OK", 5, 10)];
-        let actual = vec![
-            create_button("OK", 5, 10),
-            create_button("Cancel", 5, 20),
-        ];
+        let actual = vec![create_button("OK", 5, 10), create_button("Cancel", 5, 20)];
 
         let matcher = SnapshotMatcher::new();
         let diff = matcher.compare(&expected, &actual);
@@ -611,10 +661,7 @@ mod tests {
 
     #[test]
     fn test_removed_element() {
-        let expected = vec![
-            create_button("OK", 5, 10),
-            create_button("Cancel", 5, 20),
-        ];
+        let expected = vec![create_button("OK", 5, 10), create_button("Cancel", 5, 20)];
         let actual = vec![create_button("OK", 5, 10)];
 
         let matcher = SnapshotMatcher::new();
@@ -635,7 +682,9 @@ mod tests {
 
         assert!(!diff.is_match());
         assert_eq!(diff.modified.len(), 1);
-        assert!(diff.modified[0].changes.iter().any(|c| matches!(c, ElementChange::ContentChanged { field, .. } if field == "checked")));
+        assert!(diff.modified[0].changes.iter().any(
+            |c| matches!(c, ElementChange::ContentChanged { field, .. } if field == "checked")
+        ));
     }
 
     #[test]
@@ -657,10 +706,7 @@ mod tests {
     #[test]
     fn test_html_report() {
         let expected = vec![create_button("OK", 5, 10)];
-        let actual = vec![
-            create_button("OK", 5, 10),
-            create_button("Cancel", 5, 20),
-        ];
+        let actual = vec![create_button("OK", 5, 10), create_button("Cancel", 5, 20)];
 
         let matcher = SnapshotMatcher::new();
         let diff = matcher.compare(&expected, &actual);
