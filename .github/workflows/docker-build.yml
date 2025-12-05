@@ -14,7 +14,9 @@ on:
 env:
   REGISTRY_DOCKERHUB: docker.io
   REGISTRY_GHCR: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  # Docker Hub uses different username than GitHub
+  DOCKERHUB_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/mcp-server-terminal
+  GHCR_IMAGE: ${{ github.repository }}
 
 jobs:
   build-and-push:
@@ -55,8 +57,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ env.REGISTRY_DOCKERHUB }}/${{ env.IMAGE_NAME }}
-            ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}
+            ${{ env.REGISTRY_DOCKERHUB }}/${{ env.DOCKERHUB_IMAGE }}
+            ${{ env.REGISTRY_GHCR }}/${{ env.GHCR_IMAGE }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -82,6 +84,6 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: actions/attest-build-provenance@v1
         with:
-          subject-name: ${{ env.REGISTRY_GHCR }}/${{ env.IMAGE_NAME }}
+          subject-name: ${{ env.REGISTRY_GHCR }}/${{ env.GHCR_IMAGE }}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
