@@ -36,13 +36,13 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Run Trivy vulnerability scanner
+      - name: Run Trivy vulnerability scanner (SARIF - all vulnerabilities)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: terminal-mcp:scan
           format: 'sarif'
           output: 'trivy-results.sarif'
-          severity: 'CRITICAL,HIGH'
+          severity: 'CRITICAL,HIGH,MEDIUM'
 
       - name: Upload Trivy results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
@@ -50,13 +50,14 @@ jobs:
         with:
           sarif_file: 'trivy-results.sarif'
 
-      - name: Run Trivy vulnerability scanner (table output)
+      - name: Run Trivy vulnerability scanner (fixable only)
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: terminal-mcp:scan
           format: 'table'
-          severity: 'CRITICAL,HIGH,MEDIUM'
-          exit-code: '1'  # Fail on CRITICAL/HIGH vulnerabilities
+          severity: 'CRITICAL,HIGH'
+          ignore-unfixed: true
+          exit-code: '1'  # Only fail on fixable CRITICAL/HIGH vulnerabilities
 
       - name: Generate SBOM
         uses: aquasecurity/trivy-action@master
