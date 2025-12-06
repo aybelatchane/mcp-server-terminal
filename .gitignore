@@ -34,3 +34,4 @@ package-lock.json
 .cache/
 .claude/*
 .gemini/*
+.playwright-mcp/
