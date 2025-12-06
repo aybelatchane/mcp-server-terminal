@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" shape-rendering="crispEdges">
+  <!-- Background - Dark -->
+  <rect width="32" height="32" fill="#1a1a2e"/>
+
+  <!-- Terminal window frame -->
+  <rect x="2" y="4" width="28" height="24" fill="#00ff41"/>
+  <rect x="4" y="8" width="24" height="18" fill="#1a1a2e"/>
+
+  <!-- Title bar dots -->
+  <rect x="4" y="5" width="2" height="2" fill="#1a1a2e"/>
+  <rect x="7" y="5" width="2" height="2" fill="#1a1a2e"/>
+  <rect x="10" y="5" width="2" height="2" fill="#1a1a2e"/>
+
+  <!-- Command prompt: >_ -->
+  <rect x="6" y="11" width="2" height="2" fill="#00ff41"/>
+  <rect x="8" y="13" width="2" height="2" fill="#00ff41"/>
+  <rect x="12" y="11" width="6" height="2" fill="#00ff41"/>
+
+  <!-- Second line prompt -->
+  <rect x="6" y="17" width="2" height="2" fill="#00ff41"/>
+  <rect x="8" y="19" width="2" height="2" fill="#00ff41"/>
+  <rect x="12" y="17" width="10" height="2" fill="#00ff41"/>
+
+  <!-- Cursor block (blinking) -->
+  <rect x="24" y="17" width="3" height="4" fill="#00ff41"/>
+</svg>
