@@ -9,9 +9,14 @@ const PACKAGE_VERSION = require("./package.json").version;
 const REPO = "aybelatchane/mcp-server-terminal";
 const BINARY_NAME = "terminal-mcp";
 
-// Cache directory for the binary
-const CACHE_DIR = path.join(__dirname, ".cache");
+// Cache directory for the binary (in user's home to persist across npx runs)
+const CACHE_DIR = path.join(
+  process.env.HOME || process.env.USERPROFILE || __dirname,
+  ".cache",
+  "mcp-server-terminal"
+);
 const BINARY_PATH = path.join(CACHE_DIR, BINARY_NAME);
+const VERSION_FILE = path.join(CACHE_DIR, "version.txt");
 
 // Map Node.js platform/arch to Rust target triples
 const PLATFORM_MAPPING = {
@@ -45,8 +50,71 @@ function getTarget() {
   return target;
 }
 
-function getDownloadUrl(target) {
-  return `https://github.com/${REPO}/releases/download/v${PACKAGE_VERSION}/${BINARY_NAME}-${target}.tar.gz`;
+function getDownloadUrl(version, target) {
+  return `https://github.com/${REPO}/releases/download/v${version}/${BINARY_NAME}-${target}.tar.gz`;
+}
+
+// Fetch latest version from GitHub releases
+function fetchLatestVersion() {
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: "api.github.com",
+      path: `/repos/${REPO}/releases/latest`,
+      headers: {
+        "User-Agent": "mcp-server-terminal-cli",
+        Accept: "application/vnd.github.v3+json",
+      },
+    };
+
+    https
+      .get(options, (response) => {
+        if (response.statusCode === 404) {
+          // No releases yet, use package version
+          resolve(PACKAGE_VERSION);
+          return;
+        }
+
+        if (response.statusCode !== 200) {
+          reject(new Error(`GitHub API error: ${response.statusCode}`));
+          return;
+        }
+
+        let data = "";
+        response.on("data", (chunk) => (data += chunk));
+        response.on("end", () => {
+          try {
+            const release = JSON.parse(data);
+            // tag_name is like "v1.0.1", strip the "v"
+            const version = release.tag_name.replace(/^v/, "");
+            resolve(version);
+          } catch (e) {
+            reject(e);
+          }
+        });
+      })
+      .on("error", reject);
+  });
+}
+
+// Get cached version
+function getCachedVersion() {
+  try {
+    if (fs.existsSync(VERSION_FILE)) {
+      return fs.readFileSync(VERSION_FILE, "utf8").trim();
+    }
+  } catch {
+    // Ignore errors
+  }
+  return null;
+}
+
+// Save version to cache
+function saveCachedVersion(version) {
+  try {
+    fs.writeFileSync(VERSION_FILE, version);
+  } catch {
+    // Ignore errors
+  }
 }
 
 function downloadFile(url) {
@@ -88,37 +156,85 @@ function extractTarGz(buffer, destDir) {
   }
 }
 
-async function ensureBinary() {
-  // Check if binary already exists and is executable
-  if (fs.existsSync(BINARY_PATH)) {
-    try {
-      fs.accessSync(BINARY_PATH, fs.constants.X_OK);
-      return BINARY_PATH;
-    } catch {
-      // Binary exists but not executable, re-download
-    }
-  }
+// Compare versions (simple semver comparison)
+function isNewerVersion(latest, current) {
+  const latestParts = latest.split(".").map(Number);
+  const currentParts = current.split(".").map(Number);
 
-  // Create cache directory
+  for (let i = 0; i < 3; i++) {
+    const l = latestParts[i] || 0;
+    const c = currentParts[i] || 0;
+    if (l > c) return true;
+    if (l < c) return false;
+  }
+  return false;
+}
+
+async function ensureBinary() {
+  // Create cache directory if needed
   if (!fs.existsSync(CACHE_DIR)) {
     fs.mkdirSync(CACHE_DIR, { recursive: true });
   }
 
-  const target = getTarget();
-  const url = getDownloadUrl(target);
+  const cachedVersion = getCachedVersion();
+  let targetVersion = PACKAGE_VERSION;
+  let needsDownload = !fs.existsSync(BINARY_PATH);
 
-  console.error(`Downloading mcp-server-terminal v${PACKAGE_VERSION} for ${target}...`);
+  // Check for updates (unless MCP_NO_UPDATE is set)
+  if (!process.env.MCP_NO_UPDATE) {
+    try {
+      const latestVersion = await fetchLatestVersion();
+
+      if (cachedVersion && isNewerVersion(latestVersion, cachedVersion)) {
+        console.error(
+          `Update available: v${cachedVersion} -> v${latestVersion}`
+        );
+        targetVersion = latestVersion;
+        needsDownload = true;
+      } else if (!cachedVersion) {
+        // No cached version, use latest
+        targetVersion = latestVersion;
+      }
+    } catch (error) {
+      // Failed to check for updates, continue with cached or package version
+      if (process.env.DEBUG) {
+        console.error(`Update check failed: ${error.message}`);
+      }
+    }
+  }
+
+  // If binary exists and version matches, verify it's executable
+  if (!needsDownload && fs.existsSync(BINARY_PATH)) {
+    try {
+      fs.accessSync(BINARY_PATH, fs.constants.X_OK);
+      return BINARY_PATH;
+    } catch {
+      needsDownload = true;
+    }
+  }
+
+  if (!needsDownload) {
+    return BINARY_PATH;
+  }
+
+  const target = getTarget();
+  const url = getDownloadUrl(targetVersion, target);
+
+  console.error(
+    `Downloading mcp-server-terminal v${targetVersion} for ${target}...`
+  );
 
   try {
     const buffer = await downloadFile(url);
     extractTarGz(buffer, CACHE_DIR);
     fs.chmodSync(BINARY_PATH, 0o755);
-    console.error(`Successfully installed mcp-server-terminal`);
+    saveCachedVersion(targetVersion);
+    console.error(`Successfully installed mcp-server-terminal v${targetVersion}`);
     return BINARY_PATH;
   } catch (error) {
     console.error(`Failed to download binary: ${error.message}`);
     console.error(`\nPlease download manually from:`);
-    console.error(`https://github.com/${REPO}/releases/tag/v${PACKAGE_VERSION}`);
+    console.error(`https://github.com/${REPO}/releases/tag/v${targetVersion}`);
     process.exit(1);
   }
 }
