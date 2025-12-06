@@ -1,6 +1,26 @@
 # Smithery configuration for Terminal MCP Server
 # See: https://smithery.ai/docs/config
 
+name: Terminal MCP Server
+description: |
+  Playwright for terminals - AI agents interact with TUI/CLI apps through
+  structured Terminal State Tree representation. Detect menus, tables, buttons,
+  and forms in terminal applications. Navigate with arrow keys, type text,
+  and click on UI elements by reference ID.
+
+author: Ayoub Belayoub
+repository: https://github.com/aybelatchane/mcp-server-terminal
+license: MIT
+
+keywords:
+  - terminal
+  - tui
+  - cli
+  - automation
+  - accessibility
+  - playwright
+  - screen-reader
+
 startCommand:
   type: stdio
   configSchema:
