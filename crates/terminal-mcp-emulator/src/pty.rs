@@ -197,15 +197,33 @@ impl PtyHandle {
                 _ => {}
             }
 
-            let output = Command::new("tmux")
+            // Try to capture alternate screen first (for TUI apps like vim, htop, bubbletea)
+            // If no alt-screen exists, fall back to normal screen
+            let mut output = Command::new("tmux")
                 .arg("capture-pane")
                 .arg("-p") // Print to stdout
                 .arg("-e") // Include escape sequences for colors/styles
                 .arg("-J") // Join wrapped lines
+                .arg("-a") // Capture alternate screen (for TUI apps)
+                .arg("-q") // Quiet (don't error if no alt-screen)
                 .arg("-t")
                 .arg(session)
                 .output()
                 .map_err(|e| Error::PtyError(format!("Failed to capture tmux pane: {e}")))?;
+
+            // If alt-screen capture returned empty (no alt-screen active),
+            // fall back to normal screen capture
+            if output.stdout.is_empty() && output.status.success() {
+                output = Command::new("tmux")
+                    .arg("capture-pane")
+                    .arg("-p") // Print to stdout
+                    .arg("-e") // Include escape sequences
+                    .arg("-J") // Join wrapped lines
+                    .arg("-t")
+                    .arg(session)
+                    .output()
+                    .map_err(|e| Error::PtyError(format!("Failed to capture tmux pane: {e}")))?;
+            }
 
             // Check if tmux command failed
             if !output.status.success() {
