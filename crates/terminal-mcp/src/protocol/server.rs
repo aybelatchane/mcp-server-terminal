@@ -132,6 +132,7 @@ impl TerminalMcpServer {
             dimensions,
             mode,
             params.terminal_emulator.clone(),
+            params.cwd.clone(),
         )
         .map_err(|e| {
             error!("Failed to create session: {}", e);

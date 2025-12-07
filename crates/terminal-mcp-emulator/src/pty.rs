@@ -53,10 +53,10 @@ impl PtyHandle {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn spawn(command: &str, args: &[String], dimensions: Dimensions) -> Result<Self> {
+    pub fn spawn(command: &str, args: &[String], dimensions: Dimensions, cwd: Option<String>) -> Result<Self> {
         info!(
-            "Spawning PTY: command='{}' args={:?}, dimensions={}x{}",
-            command, args, dimensions.rows, dimensions.cols
+            "Spawning PTY: command='{}' args={:?}, dimensions={}x{}, cwd={:?}",
+            command, args, dimensions.rows, dimensions.cols, cwd
         );
 
         let pty_system = native_pty_system();
@@ -79,6 +79,12 @@ impl PtyHandle {
         let mut cmd = CommandBuilder::new(command);
         for arg in args {
             cmd.arg(arg);
+        }
+
+        // Set working directory if specified
+        if let Some(dir) = cwd {
+            debug!("Setting working directory to: {}", dir);
+            cmd.cwd(dir);
         }
 
         debug!("Spawning child process: {}", command);
