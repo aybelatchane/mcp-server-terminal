@@ -64,7 +64,11 @@ impl Parser {
         let dims = self.grid.dimensions();
         let cursor = self.grid.cursor_mut();
 
-        cursor.position.row = (cursor.position.row + n).min(dims.rows.saturating_sub(1));
+        let new_row = (cursor.position.row + n).min(dims.rows.saturating_sub(1));
+        cursor.position.row = new_row;
+
+        // Clear wrap flag - explicit newline means new logical line
+        self.grid.set_line_wrapped(new_row, false);
     }
 
     /// Move cursor up by n rows.
@@ -317,7 +321,11 @@ impl Perform for Parser {
 
         if cursor.position.col >= dims.cols {
             cursor.position.col = 0;
-            cursor.position.row = (cursor.position.row + 1).min(dims.rows.saturating_sub(1));
+            let next_row = (cursor.position.row + 1).min(dims.rows.saturating_sub(1));
+            cursor.position.row = next_row;
+
+            // Mark next row as wrapped (continuation of current line)
+            self.grid.set_line_wrapped(next_row, true);
         }
     }
 

@@ -74,6 +74,8 @@ pub struct Grid {
     current_fg: Color,
     /// Current background color
     current_bg: Color,
+    /// Line wrap flags - true if row is continuation of previous row
+    line_wrapped: Vec<bool>,
 }
 
 impl Grid {
@@ -91,6 +93,7 @@ impl Grid {
             current_attrs: CellAttributes::default(),
             current_fg: Color::Default,
             current_bg: Color::Default,
+            line_wrapped: vec![false; dimensions.rows as usize],
         }
     }
 
@@ -134,10 +137,14 @@ impl Grid {
     /// Extract text from a specific region.
     ///
     /// Trailing whitespace is trimmed from each line.
+    /// Respects line wrapping - wrapped lines are joined without newlines.
     pub fn extract_text(&self, bounds: &Bounds) -> String {
         let mut text = String::new();
         for row_idx in bounds.row..(bounds.row + bounds.height) {
-            if row_idx > bounds.row {
+            // Add newline before row if:
+            // 1. Not the first row, AND
+            // 2. This row is NOT wrapped (i.e., it's a new logical line)
+            if row_idx > bounds.row && !self.is_line_wrapped(row_idx) {
                 text.push('\n');
             }
             for col_idx in bounds.col..(bounds.col + bounds.width) {
@@ -227,6 +234,7 @@ impl Grid {
     /// old and new dimensions. Cursor is clamped to new bounds.
     pub fn resize(&mut self, new_dimensions: Dimensions) {
         let mut new_cells = vec![Cell::default(); new_dimensions.cell_count()];
+        let mut new_wrapped = vec![false; new_dimensions.rows as usize];
 
         let copy_rows = self.dimensions.rows.min(new_dimensions.rows);
         let copy_cols = self.dimensions.cols.min(new_dimensions.cols);
@@ -238,9 +246,12 @@ impl Grid {
                 let new_idx = row as usize * new_dimensions.cols as usize + col as usize;
                 new_cells[new_idx] = self.cells[old_idx].clone();
             }
+            // Copy wrap flags
+            new_wrapped[row as usize] = self.line_wrapped[row as usize];
         }
 
         self.cells = new_cells;
+        self.line_wrapped = new_wrapped;
         self.dimensions = new_dimensions;
 
         // Clamp cursor to new dimensions
@@ -257,6 +268,9 @@ impl Grid {
         for cell in &mut self.cells {
             *cell = Cell::default();
         }
+        for wrapped in &mut self.line_wrapped {
+            *wrapped = false;
+        }
     }
 
     /// Clear a specific region.
@@ -267,6 +281,22 @@ impl Grid {
                     *cell = Cell::default();
                 }
             }
+        }
+    }
+
+    /// Check if a row is wrapped (continues from previous row).
+    pub fn is_line_wrapped(&self, row: u16) -> bool {
+        if row < self.dimensions.rows {
+            self.line_wrapped[row as usize]
+        } else {
+            false
+        }
+    }
+
+    /// Set line wrap flag for a row.
+    pub fn set_line_wrapped(&mut self, row: u16, wrapped: bool) {
+        if row < self.dimensions.rows {
+            self.line_wrapped[row as usize] = wrapped;
         }
     }
 }

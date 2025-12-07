@@ -207,9 +207,11 @@ impl PtyHandle {
             // If no alt-screen exists, fall back to normal screen
             // NOTE: We don't use -e flag to avoid escape sequences that cause cursor positioning issues
             // when parsed through VTE. Plain text gives us correct, unfragmented output.
+            // We use -J to join wrapped lines so long lines appear correctly without artificial breaks.
             let mut output = Command::new("tmux")
                 .arg("capture-pane")
                 .arg("-p") // Print to stdout
+                .arg("-J") // Join wrapped lines
                 .arg("-a") // Capture alternate screen (for TUI apps)
                 .arg("-q") // Quiet (don't error if no alt-screen)
                 .arg("-t")
@@ -226,6 +228,7 @@ impl PtyHandle {
                 output = Command::new("tmux")
                     .arg("capture-pane")
                     .arg("-p") // Print to stdout
+                    .arg("-J") // Join wrapped lines
                     .arg("-t")
                     .arg(session)
                     .output()
