@@ -10,7 +10,7 @@ use tokio::sync::RwLock;
 use rmcp::{
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
     model::*,
-    tool, tool_handler, tool_router, ErrorData as McpError,
+    tool, tool_router, ErrorData as McpError,
 };
 
 use tracing::{debug, error, info, instrument, warn};
@@ -724,7 +724,8 @@ impl Default for TerminalMcpServer {
 }
 
 // Implement the ServerHandler trait to define server capabilities
-#[tool_handler]
+// Note: We manually implement call_tool and list_tools instead of using #[tool_handler]
+// to allow custom schema transformation in list_tools
 impl rmcp::ServerHandler for TerminalMcpServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
@@ -738,5 +739,39 @@ impl rmcp::ServerHandler for TerminalMcpServer {
             capabilities: ServerCapabilities::builder().enable_tools().build(),
             ..Default::default()
         }
+    }
+
+    // Implement call_tool to route to tool_router (same as #[tool_handler] macro generates)
+    async fn call_tool(
+        &self,
+        request: CallToolRequestParam,
+        context: rmcp::service::RequestContext<rmcp::RoleServer>,
+    ) -> Result<CallToolResult, McpError> {
+        use rmcp::handler::server::tool::ToolCallContext;
+        let tcc = ToolCallContext::new(self, request, context);
+        self.tool_router.call(tcc).await
+    }
+
+    // Override list_tools to apply schema transformations for AI client compatibility
+    async fn list_tools(
+        &self,
+        _request: Option<PaginatedRequestParam>,
+        _context: rmcp::service::RequestContext<rmcp::RoleServer>,
+    ) -> Result<ListToolsResult, McpError> {
+        use crate::schema::SchemaTransformer;
+        use std::sync::Arc;
+
+        // Get tools from router
+        let mut tools = self.tool_router.list_all();
+
+        // Transform each tool's input_schema for compatibility
+        for tool in &mut tools {
+            // Extract the Map from the Arc, transform it, and wrap it back in an Arc
+            let schema_map = tool.input_schema.as_ref().clone();
+            let transformed_map = SchemaTransformer::transform_map(schema_map);
+            tool.input_schema = Arc::new(transformed_map);
+        }
+
+        Ok(ListToolsResult::with_all_items(tools))
     }
 }

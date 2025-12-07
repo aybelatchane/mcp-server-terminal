@@ -49,7 +49,7 @@ impl PtyHandle {
     /// use terminal_mcp_core::Dimensions;
     ///
     /// # async fn example() -> terminal_mcp_core::Result<()> {
-    /// let pty = PtyHandle::spawn("/bin/bash", &[], Dimensions::new(24, 80))?;
+    /// let pty = PtyHandle::spawn("/bin/bash", &[], Dimensions::new(24, 80), None)?;
     /// # Ok(())
     /// # }
     /// ```
@@ -631,7 +631,7 @@ mod tests {
     fn test_pty_spawn() {
         let shell = if cfg!(windows) { "cmd.exe" } else { "/bin/sh" };
 
-        let pty = PtyHandle::spawn(shell, &[], Dimensions::new(24, 80));
+        let pty = PtyHandle::spawn(shell, &[], Dimensions::new(24, 80), None);
         assert!(pty.is_ok());
 
         let pty = pty.unwrap();
@@ -643,7 +643,7 @@ mod tests {
         let shell = if cfg!(windows) { "cmd.exe" } else { "/bin/sh" };
 
         let dims = Dimensions::new(30, 100);
-        let pty = PtyHandle::spawn(shell, &[], dims).unwrap();
+        let pty = PtyHandle::spawn(shell, &[], dims, None).unwrap();
 
         let current_dims = pty.dimensions().unwrap();
         assert_eq!(current_dims.rows, 30);
@@ -654,7 +654,7 @@ mod tests {
     fn test_pty_write_and_read() {
         let shell = if cfg!(windows) { "cmd.exe" } else { "/bin/sh" };
 
-        let pty = PtyHandle::spawn(shell, &[], Dimensions::new(24, 80)).unwrap();
+        let pty = PtyHandle::spawn(shell, &[], Dimensions::new(24, 80), None).unwrap();
 
         // Write a command
         let command: &[u8] = if cfg!(windows) {
@@ -677,7 +677,7 @@ mod tests {
     fn test_pty_resize() {
         let shell = if cfg!(windows) { "cmd.exe" } else { "/bin/sh" };
 
-        let pty = PtyHandle::spawn(shell, &[], Dimensions::new(24, 80)).unwrap();
+        let pty = PtyHandle::spawn(shell, &[], Dimensions::new(24, 80), None).unwrap();
 
         // Resize
         let new_dims = Dimensions::new(40, 120);
@@ -694,7 +694,7 @@ mod tests {
     fn test_pty_kill() {
         let shell = if cfg!(windows) { "cmd.exe" } else { "/bin/sh" };
 
-        let pty = PtyHandle::spawn(shell, &[], Dimensions::new(24, 80)).unwrap();
+        let pty = PtyHandle::spawn(shell, &[], Dimensions::new(24, 80), None).unwrap();
         assert!(pty.is_alive());
 
         // Kill the process
@@ -711,7 +711,7 @@ mod tests {
     async fn test_pty_read_async() {
         let shell = if cfg!(windows) { "cmd.exe" } else { "/bin/sh" };
 
-        let pty = PtyHandle::spawn(shell, &[], Dimensions::new(24, 80)).unwrap();
+        let pty = PtyHandle::spawn(shell, &[], Dimensions::new(24, 80), None).unwrap();
         let mut rx = pty.read_async();
 
         // Write a command

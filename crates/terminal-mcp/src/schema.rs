@@ -26,6 +26,21 @@ impl SchemaTransformer {
         schema
     }
 
+    /// Transform a schema stored as a Map (used by rmcp's Tool.input_schema).
+    ///
+    /// This is a convenience wrapper around `transform` that works with
+    /// serde_json::Map directly.
+    pub fn transform_map(
+        schema: serde_json::Map<String, Value>,
+    ) -> serde_json::Map<String, Value> {
+        let value = Value::Object(schema);
+        let transformed = Self::transform(value);
+        match transformed {
+            Value::Object(map) => map,
+            _ => unreachable!("transform should always return an Object"),
+        }
+    }
+
     /// Convert `$defs` to `definitions` for draft-07 compatibility.
     ///
     /// Draft-2020-12 uses `$defs`, but draft-07 uses `definitions`.
