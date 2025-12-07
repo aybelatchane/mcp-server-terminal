@@ -5,7 +5,7 @@ use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 use tokio::task;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 use terminal_mcp_core::{Dimensions, Error, Result};
 
@@ -531,6 +531,11 @@ impl PtyHandle {
         // Tmux mode: kill session
         if let Some(session) = &self.tmux_session {
             use std::process::Command;
+            use std::thread;
+            use std::time::Duration;
+
+            info!("Killing tmux session: {}", session);
+
             let status = Command::new("tmux")
                 .arg("kill-session")
                 .arg("-t")
@@ -539,7 +544,29 @@ impl PtyHandle {
                 .map_err(|e| Error::PtyError(format!("Failed to kill tmux session: {e}")))?;
 
             if !status.success() {
-                return Err(Error::PtyError("Tmux kill-session failed".to_string()));
+                warn!("Tmux kill-session returned non-zero status");
+            }
+
+            // Give tmux time to clean up
+            thread::sleep(Duration::from_millis(100));
+
+            // Verify session is actually gone
+            let verify = Command::new("tmux")
+                .arg("has-session")
+                .arg("-t")
+                .arg(session)
+                .status();
+
+            match verify {
+                Ok(status) if !status.success() => {
+                    info!("Tmux session {} successfully terminated", session);
+                }
+                Ok(_) => {
+                    warn!("Tmux session {} still exists after kill attempt", session);
+                }
+                Err(e) => {
+                    debug!("Error verifying tmux session cleanup: {}", e);
+                }
             }
 
             return Ok(());

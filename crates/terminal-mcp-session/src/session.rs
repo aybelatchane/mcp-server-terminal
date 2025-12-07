@@ -94,9 +94,14 @@ impl Session {
                 format!("{} {}", command, args.join(" "))
             };
 
-            // Create tmux session (detached)
+            // Ensure tmux server is running before creating session
             use std::process::Command as StdCommand;
-            let tmux_result = StdCommand::new("tmux")
+            let _start_server = StdCommand::new("tmux")
+                .arg("start-server")
+                .status();  // Ignore errors - server might already be running
+
+            // Create tmux session (detached)
+            let tmux_output = StdCommand::new("tmux")
                 .arg("new-session")
                 .arg("-d")
                 .arg("-s")
@@ -108,10 +113,10 @@ impl Session {
                 .arg("bash")
                 .arg("-c")
                 .arg(&full_command)
-                .status();
+                .output();
 
-            match tmux_result {
-                Ok(status) if status.success() => {
+            match tmux_output {
+                Ok(output) if output.status.success() => {
                     info!("Tmux session created: {}", session_name);
                     // Spawn visual terminal attached to tmux session
                     let term_name = terminal_emulator.as_deref().unwrap_or("xterm");
@@ -150,9 +155,22 @@ impl Session {
                     let pty = PtyHandle::spawn_tmux(&session_name, dimensions)?;
                     (handle, pty)
                 }
-                _ => {
-                    warn!("Tmux session creation failed, falling back to headless PTY");
+                Ok(output) => {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    error!(
+                        "Tmux session creation failed for '{}': exit_code={:?}, stderr={}",
+                        session_name,
+                        output.status.code(),
+                        stderr
+                    );
+                    warn!("Falling back to headless PTY mode");
                     // Fall back to regular PTY if tmux fails
+                    let pty = PtyHandle::spawn(&command, &args, dimensions)?;
+                    (None, pty)
+                }
+                Err(e) => {
+                    error!("Failed to execute tmux command: {}", e);
+                    warn!("Falling back to headless PTY mode");
                     let pty = PtyHandle::spawn(&command, &args, dimensions)?;
                     (None, pty)
                 }
