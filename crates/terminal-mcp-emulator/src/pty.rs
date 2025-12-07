@@ -201,6 +201,7 @@ impl PtyHandle {
                 .arg("capture-pane")
                 .arg("-p") // Print to stdout
                 .arg("-e") // Include escape sequences for colors/styles
+                .arg("-J") // Join wrapped lines
                 .arg("-t")
                 .arg(session)
                 .output()
@@ -223,10 +224,17 @@ impl PtyHandle {
                 return Ok(Vec::new());
             }
 
-            // Content changed - update cache and return the new content
+            // Content changed - update cache
             debug!("Tmux pane content changed: {} bytes", new_content.len());
             *last_content = new_content.clone();
-            return Ok(new_content);
+
+            // For tmux mode, we need to signal that the grid should be cleared
+            // before processing this content, since it's a complete snapshot
+            // rather than incremental updates. We prepend a clear screen sequence.
+            let mut result = Vec::new();
+            result.extend_from_slice(b"\x1b[2J\x1b[H"); // Clear screen + move cursor to home
+            result.extend_from_slice(&new_content);
+            return Ok(result);
         }
 
         // Regular PTY mode - use the stored reader (already set to non-blocking)
