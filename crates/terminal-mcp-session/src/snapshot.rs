@@ -44,6 +44,30 @@ impl Session {
         // Wait for idle
         self.wait_for_idle(config)?;
 
+        // For tmux mode (visual mode), clear the grid and take one final snapshot
+        // This ensures we get a clean state without accumulated content
+        let pty_arc = self.pty();
+        let pty = pty_arc.lock().unwrap();
+        let is_tmux = pty.is_tmux_mode();
+        drop(pty);
+
+        if is_tmux {
+            // Clear the grid to start fresh
+            let parser_arc = self.parser();
+            let mut parser = parser_arc.lock().unwrap();
+            parser.grid_mut().clear();
+            drop(parser);
+
+            // Invalidate tmux cache to force fresh read
+            let pty_arc = self.pty();
+            let pty = pty_arc.lock().unwrap();
+            pty.invalidate_tmux_cache()?;
+            drop(pty);
+
+            // Process one final read to get the clean tmux snapshot
+            self.process_output()?;
+        }
+
         // Get grid state
         let parser_arc = self.parser();
         let parser = parser_arc.lock().unwrap();

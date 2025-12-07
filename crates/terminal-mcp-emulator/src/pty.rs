@@ -199,11 +199,11 @@ impl PtyHandle {
 
             // Try to capture alternate screen first (for TUI apps like vim, htop, bubbletea)
             // If no alt-screen exists, fall back to normal screen
+            // NOTE: We don't use -e flag to avoid escape sequences that cause cursor positioning issues
+            // when parsed through VTE. Plain text gives us correct, unfragmented output.
             let mut output = Command::new("tmux")
                 .arg("capture-pane")
                 .arg("-p") // Print to stdout
-                .arg("-e") // Include escape sequences for colors/styles
-                .arg("-J") // Join wrapped lines
                 .arg("-a") // Capture alternate screen (for TUI apps)
                 .arg("-q") // Quiet (don't error if no alt-screen)
                 .arg("-t")
@@ -211,14 +211,15 @@ impl PtyHandle {
                 .output()
                 .map_err(|e| Error::PtyError(format!("Failed to capture tmux pane: {e}")))?;
 
-            // If alt-screen capture returned empty (no alt-screen active),
+            // If alt-screen capture returned empty or only whitespace (no alt-screen active),
             // fall back to normal screen capture
-            if output.stdout.is_empty() && output.status.success() {
+            let alt_output_is_empty = output.stdout.is_empty()
+                || output.stdout.iter().all(|&b| b == b'\n' || b == b'\r' || b == b' ' || b == b'\t');
+
+            if alt_output_is_empty && output.status.success() {
                 output = Command::new("tmux")
                     .arg("capture-pane")
                     .arg("-p") // Print to stdout
-                    .arg("-e") // Include escape sequences
-                    .arg("-J") // Join wrapped lines
                     .arg("-t")
                     .arg(session)
                     .output()
@@ -237,22 +238,31 @@ impl PtyHandle {
 
             // Check if content has changed since last read
             let mut last_content = self.last_tmux_content.lock().unwrap();
-            if new_content == *last_content {
-                // No change - return empty to signal "idle"
+
+            // If cache was invalidated (empty), always return content even if unchanged
+            // Otherwise, only return content if it changed
+            let cache_was_invalidated = last_content.is_empty();
+            if !cache_was_invalidated && new_content == *last_content {
+                // No change and cache is valid - return empty to signal "idle"
                 return Ok(Vec::new());
             }
 
-            // Content changed - update cache
-            debug!("Tmux pane content changed: {} bytes", new_content.len());
+            // Content changed or cache was invalidated - update cache
+            if cache_was_invalidated {
+                debug!("Tmux cache was invalidated, forcing fresh read: {} bytes", new_content.len());
+            } else {
+                debug!("Tmux pane content changed: {} bytes", new_content.len());
+            }
             *last_content = new_content.clone();
 
-            // For tmux mode, we need to signal that the grid should be cleared
-            // before processing this content, since it's a complete snapshot
-            // rather than incremental updates. We prepend a clear screen sequence.
-            let mut result = Vec::new();
-            result.extend_from_slice(b"\x1b[2J\x1b[H"); // Clear screen + move cursor to home
-            result.extend_from_slice(&new_content);
-            return Ok(result);
+            // For tmux snapshots, prepend a cursor home sequence to ensure VTE parser
+            // writes from the top-left corner. This prevents fragmentation issues.
+            // ESC[H = Cursor Home (move to row 1, col 1)
+            let mut content_with_home = vec![0x1b, b'[', b'H']; // ESC[H
+            content_with_home.extend_from_slice(&new_content);
+
+            // Return the snapshot content with cursor home prepended
+            return Ok(content_with_home);
         }
 
         // Regular PTY mode - use the stored reader (already set to non-blocking)
@@ -468,6 +478,21 @@ impl PtyHandle {
             .lock()
             .map_err(|e| Error::PtyError(format!("Lock error: {e}")))?;
         Ok(*dims)
+    }
+
+    /// Check if this PTY is in tmux mode.
+    pub fn is_tmux_mode(&self) -> bool {
+        self.tmux_session.is_some()
+    }
+
+    /// Force refresh of tmux content cache on next read.
+    /// This ensures the next read will fetch fresh content from tmux.
+    pub fn invalidate_tmux_cache(&self) -> Result<()> {
+        if self.tmux_session.is_some() {
+            let mut last_content = self.last_tmux_content.lock().unwrap();
+            last_content.clear();
+        }
+        Ok(())
     }
 
     /// Check if the child process is still running.
