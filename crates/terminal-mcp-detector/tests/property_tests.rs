@@ -24,12 +24,13 @@ fn button_label() -> impl Strategy<Value = String> {
 }
 
 /// Generate a random button pattern.
+/// Note: Parenthesis patterns removed to avoid false positives with shell prompts (issue #141)
 fn button_text() -> impl Strategy<Value = String> {
     prop_oneof![
         button_label().prop_map(|l| format!("[ {} ]", l)),
         button_label().prop_map(|l| format!("[{}]", l)),
         button_label().prop_map(|l| format!("< {} >", l)),
-        button_label().prop_map(|l| format!("( {} )", l)),
+        button_label().prop_map(|l| format!("「{}」", l)), // Japanese corner brackets as alternative
     ]
 }
 
@@ -112,8 +113,8 @@ proptest! {
         // Should find at least one button (unless label was empty after trimming)
         // Empty labels are intentionally rejected
         let label_text = button_text
-            .trim_start_matches(&['[', '<', '(', ' '][..])
-            .trim_end_matches(&[']', '>', ')', ' '][..])
+            .trim_start_matches(&['[', '<', '「', ' '][..])
+            .trim_end_matches(&[']', '>', '」', ' '][..])
             .trim();
 
         if !label_text.is_empty() {
