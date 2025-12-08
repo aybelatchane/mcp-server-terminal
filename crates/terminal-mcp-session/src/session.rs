@@ -65,7 +65,7 @@ pub struct Session {
 impl Session {
     /// Create a new session in headless mode (backward compatible).
     pub fn create(command: String, args: Vec<String>, dimensions: Dimensions) -> Result<Self> {
-        Self::create_with_mode(command, args, dimensions, SessionMode::Headless, None)
+        Self::create_with_mode(command, args, dimensions, SessionMode::Headless, None, None)
     }
 
     /// Create a new session with specified mode and optional terminal emulator.
@@ -75,10 +75,11 @@ impl Session {
         dimensions: Dimensions,
         mode: SessionMode,
         terminal_emulator: Option<String>,
+        cwd: Option<String>,
     ) -> Result<Self> {
         info!(
-            "Creating session: command='{}', mode={:?}, dimensions={}x{}, emulator={:?}",
-            command, mode, dimensions.rows, dimensions.cols, terminal_emulator
+            "Creating session: command='{}', mode={:?}, dimensions={}x{}, emulator={:?}, cwd={:?}",
+            command, mode, dimensions.rows, dimensions.cols, terminal_emulator, cwd
         );
 
         // In visual mode, spawn terminal connected via tmux for proper I/O control
@@ -88,15 +89,24 @@ impl Session {
             let session_name = format!("terminal-mcp-{}", uuid::Uuid::new_v4());
 
             // Build command string
-            let full_command = if args.is_empty() {
+            let mut full_command = if args.is_empty() {
                 command.clone()
             } else {
                 format!("{} {}", command, args.join(" "))
             };
 
-            // Create tmux session (detached)
+            // Prepend cd command if cwd is specified
+            if let Some(ref dir) = cwd {
+                full_command = format!("cd {} && {}", dir, full_command);
+                debug!("Prepended cd command for visual mode: cd {}", dir);
+            }
+
+            // Ensure tmux server is running before creating session
             use std::process::Command as StdCommand;
-            let tmux_result = StdCommand::new("tmux")
+            let _start_server = StdCommand::new("tmux").arg("start-server").status(); // Ignore errors - server might already be running
+
+            // Create tmux session (detached)
+            let tmux_output = StdCommand::new("tmux")
                 .arg("new-session")
                 .arg("-d")
                 .arg("-s")
@@ -108,10 +118,10 @@ impl Session {
                 .arg("bash")
                 .arg("-c")
                 .arg(&full_command)
-                .status();
+                .output();
 
-            match tmux_result {
-                Ok(status) if status.success() => {
+            match tmux_output {
+                Ok(output) if output.status.success() => {
                     info!("Tmux session created: {}", session_name);
                     // Spawn visual terminal attached to tmux session
                     let term_name = terminal_emulator.as_deref().unwrap_or("xterm");
@@ -150,17 +160,30 @@ impl Session {
                     let pty = PtyHandle::spawn_tmux(&session_name, dimensions)?;
                     (handle, pty)
                 }
-                _ => {
-                    warn!("Tmux session creation failed, falling back to headless PTY");
+                Ok(output) => {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    error!(
+                        "Tmux session creation failed for '{}': exit_code={:?}, stderr={}",
+                        session_name,
+                        output.status.code(),
+                        stderr
+                    );
+                    warn!("Falling back to headless PTY mode");
                     // Fall back to regular PTY if tmux fails
-                    let pty = PtyHandle::spawn(&command, &args, dimensions)?;
+                    let pty = PtyHandle::spawn(&command, &args, dimensions, cwd.clone())?;
+                    (None, pty)
+                }
+                Err(e) => {
+                    error!("Failed to execute tmux command: {}", e);
+                    warn!("Falling back to headless PTY mode");
+                    let pty = PtyHandle::spawn(&command, &args, dimensions, cwd.clone())?;
                     (None, pty)
                 }
             }
         } else {
             debug!("Creating headless PTY session");
             // Headless mode: regular PTY
-            let pty = PtyHandle::spawn(&command, &args, dimensions)?;
+            let pty = PtyHandle::spawn(&command, &args, dimensions, cwd)?;
             (None, pty)
         };
 

@@ -16,6 +16,8 @@ struct ButtonPattern {
 pub struct ButtonDetector {
     patterns: Vec<ButtonPattern>,
     max_label_length: usize,
+    /// Common shell prompt patterns to exclude
+    shell_prompt_markers: Vec<&'static str>,
 }
 
 impl ButtonDetector {
@@ -39,20 +41,18 @@ impl ButtonDetector {
                     open: "<",
                     close: ">",
                 },
-                ButtonPattern {
-                    open: "( ",
-                    close: " )",
-                },
-                ButtonPattern {
-                    open: "(",
-                    close: ")",
-                },
+                // Removed parenthesis patterns - too common in shell prompts
                 ButtonPattern {
                     open: "「",
                     close: "」",
                 },
             ],
             max_label_length: 30,
+            shell_prompt_markers: vec![
+                "$", "#", "~", "@",
+                ":", // Common prompt symbols (removed ">" to allow angle brackets)
+                "git", "main", "master", "dev", // Git branch indicators
+            ],
         }
     }
 
@@ -86,10 +86,26 @@ impl ButtonDetector {
         }
     }
 
+    /// Check if a row looks like a shell prompt.
+    fn is_shell_prompt_row(&self, row_text: &str) -> bool {
+        // Check for common shell prompt markers
+        for marker in &self.shell_prompt_markers {
+            if row_text.contains(marker) {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Detect buttons in a specific row.
     fn detect_buttons_in_row(&self, grid: &Grid, row: u16) -> Vec<DetectedElement> {
         let mut buttons = Vec::new();
         let row_text = self.extract_row_text(grid, row);
+
+        // Skip rows that look like shell prompts
+        if self.is_shell_prompt_row(&row_text) {
+            return buttons;
+        }
 
         for pattern in &self.patterns {
             let mut search_start = 0;
@@ -235,21 +251,17 @@ mod tests {
     }
 
     #[test]
-    fn test_button_detector_paren_pattern() {
-        let text = "( Yes ) ( No )\r\n";
+    fn test_button_detector_shell_prompt_excluded() {
+        // Shell prompts should not be detected as buttons
+        let text = "user@host:/path(main)$ \r\n";
         let grid = create_grid_with_text(5, 40, text);
 
         let detector = ButtonDetector::new();
         let context = DetectionContext::new(Position::new(0, 0));
         let detected = detector.detect(&grid, &context);
 
-        assert_eq!(detected.len(), 2);
-        if let Element::Button { label, .. } = &detected[0].element {
-            assert_eq!(label, "Yes");
-        }
-        if let Element::Button { label, .. } = &detected[1].element {
-            assert_eq!(label, "No");
-        }
+        // Should not detect "(main)" as a button due to shell prompt markers
+        assert_eq!(detected.len(), 0);
     }
 
     #[test]
@@ -279,7 +291,7 @@ mod tests {
 
     #[test]
     fn test_button_detector_mixed_patterns() {
-        let text = "[OK] < Cancel > (Help)\r\n";
+        let text = "[OK] < Cancel > 「Help」\r\n";
         let grid = create_grid_with_text(5, 40, text);
 
         let detector = ButtonDetector::new();

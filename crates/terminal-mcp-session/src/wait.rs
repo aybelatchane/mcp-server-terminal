@@ -160,6 +160,14 @@ impl Session {
     ) -> Result<WaitResult> {
         let start = Instant::now();
 
+        // For idle condition, we need to wait for terminal to become idle
+        // Track the last activity time to detect when terminal stabilizes
+        let mut last_activity_check = if condition.idle {
+            Some(Instant::now())
+        } else {
+            None
+        };
+
         loop {
             // Check timeout
             let elapsed = start.elapsed();
@@ -173,7 +181,30 @@ impl Session {
                 });
             }
 
-            // Take snapshot
+            // For idle condition, check if terminal has new output
+            if let Some(last_check) = last_activity_check {
+                // Process output without blocking
+                let bytes_read = self.process_output()?;
+
+                if bytes_read > 0 {
+                    // Terminal is still active, reset timer
+                    last_activity_check = Some(Instant::now());
+                } else if last_check.elapsed() >= snapshot_config.idle_threshold {
+                    // Terminal has been idle long enough
+                    let snapshot = self.snapshot(pipeline, snapshot_config)?;
+                    return Ok(WaitResult {
+                        condition_met: true,
+                        waited_ms: elapsed.as_millis() as u64,
+                        snapshot,
+                    });
+                }
+
+                // Small sleep to avoid busy-waiting
+                std::thread::sleep(Duration::from_millis(10));
+                continue;
+            }
+
+            // Take snapshot for non-idle conditions
             let snapshot = self.snapshot(pipeline, snapshot_config)?;
 
             // Check if condition is met
@@ -192,11 +223,6 @@ impl Session {
 
     /// Check if a condition is satisfied by the given snapshot.
     fn check_condition(snapshot: &TerminalStateTree, condition: &WaitCondition) -> Result<bool> {
-        // Idle condition is always met (snapshot already waits for idle)
-        if condition.idle {
-            return Ok(true);
-        }
-
         // Check text condition
         if let Some(pattern) = &condition.text {
             let regex = Regex::new(pattern)
@@ -213,8 +239,8 @@ impl Session {
             return Ok(if condition.gone { !found } else { found });
         }
 
-        // No specific condition - just wait for idle
-        Ok(true)
+        // No specific condition to check (idle is handled separately in wait_for)
+        Ok(false)
     }
 }
 

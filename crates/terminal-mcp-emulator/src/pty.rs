@@ -5,7 +5,7 @@ use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc;
 use tokio::task;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 use terminal_mcp_core::{Dimensions, Error, Result};
 
@@ -49,14 +49,19 @@ impl PtyHandle {
     /// use terminal_mcp_core::Dimensions;
     ///
     /// # async fn example() -> terminal_mcp_core::Result<()> {
-    /// let pty = PtyHandle::spawn("/bin/bash", &[], Dimensions::new(24, 80))?;
+    /// let pty = PtyHandle::spawn("/bin/bash", &[], Dimensions::new(24, 80), None)?;
     /// # Ok(())
     /// # }
     /// ```
-    pub fn spawn(command: &str, args: &[String], dimensions: Dimensions) -> Result<Self> {
+    pub fn spawn(
+        command: &str,
+        args: &[String],
+        dimensions: Dimensions,
+        cwd: Option<String>,
+    ) -> Result<Self> {
         info!(
-            "Spawning PTY: command='{}' args={:?}, dimensions={}x{}",
-            command, args, dimensions.rows, dimensions.cols
+            "Spawning PTY: command='{}' args={:?}, dimensions={}x{}, cwd={:?}",
+            command, args, dimensions.rows, dimensions.cols, cwd
         );
 
         let pty_system = native_pty_system();
@@ -79,6 +84,12 @@ impl PtyHandle {
         let mut cmd = CommandBuilder::new(command);
         for arg in args {
             cmd.arg(arg);
+        }
+
+        // Set working directory if specified
+        if let Some(dir) = cwd {
+            debug!("Setting working directory to: {}", dir);
+            cmd.cwd(dir);
         }
 
         debug!("Spawning child process: {}", command);
@@ -197,14 +208,40 @@ impl PtyHandle {
                 _ => {}
             }
 
-            let output = Command::new("tmux")
+            // Try to capture alternate screen first (for TUI apps like vim, htop, bubbletea)
+            // If no alt-screen exists, fall back to normal screen
+            // NOTE: We don't use -e flag to avoid escape sequences that cause cursor positioning issues
+            // when parsed through VTE. Plain text gives us correct, unfragmented output.
+            // We use -J to join wrapped lines so long lines appear correctly without artificial breaks.
+            let mut output = Command::new("tmux")
                 .arg("capture-pane")
                 .arg("-p") // Print to stdout
-                .arg("-e") // Include escape sequences for colors/styles
+                .arg("-J") // Join wrapped lines
+                .arg("-a") // Capture alternate screen (for TUI apps)
+                .arg("-q") // Quiet (don't error if no alt-screen)
                 .arg("-t")
                 .arg(session)
                 .output()
                 .map_err(|e| Error::PtyError(format!("Failed to capture tmux pane: {e}")))?;
+
+            // If alt-screen capture returned empty or only whitespace (no alt-screen active),
+            // fall back to normal screen capture
+            let alt_output_is_empty = output.stdout.is_empty()
+                || output
+                    .stdout
+                    .iter()
+                    .all(|&b| b == b'\n' || b == b'\r' || b == b' ' || b == b'\t');
+
+            if alt_output_is_empty && output.status.success() {
+                output = Command::new("tmux")
+                    .arg("capture-pane")
+                    .arg("-p") // Print to stdout
+                    .arg("-J") // Join wrapped lines
+                    .arg("-t")
+                    .arg(session)
+                    .output()
+                    .map_err(|e| Error::PtyError(format!("Failed to capture tmux pane: {e}")))?;
+            }
 
             // Check if tmux command failed
             if !output.status.success() {
@@ -218,15 +255,34 @@ impl PtyHandle {
 
             // Check if content has changed since last read
             let mut last_content = self.last_tmux_content.lock().unwrap();
-            if new_content == *last_content {
-                // No change - return empty to signal "idle"
+
+            // If cache was invalidated (empty), always return content even if unchanged
+            // Otherwise, only return content if it changed
+            let cache_was_invalidated = last_content.is_empty();
+            if !cache_was_invalidated && new_content == *last_content {
+                // No change and cache is valid - return empty to signal "idle"
                 return Ok(Vec::new());
             }
 
-            // Content changed - update cache and return the new content
-            debug!("Tmux pane content changed: {} bytes", new_content.len());
+            // Content changed or cache was invalidated - update cache
+            if cache_was_invalidated {
+                debug!(
+                    "Tmux cache was invalidated, forcing fresh read: {} bytes",
+                    new_content.len()
+                );
+            } else {
+                debug!("Tmux pane content changed: {} bytes", new_content.len());
+            }
             *last_content = new_content.clone();
-            return Ok(new_content);
+
+            // For tmux snapshots, prepend a cursor home sequence to ensure VTE parser
+            // writes from the top-left corner. This prevents fragmentation issues.
+            // ESC[H = Cursor Home (move to row 1, col 1)
+            let mut content_with_home = vec![0x1b, b'[', b'H']; // ESC[H
+            content_with_home.extend_from_slice(&new_content);
+
+            // Return the snapshot content with cursor home prepended
+            return Ok(content_with_home);
         }
 
         // Regular PTY mode - use the stored reader (already set to non-blocking)
@@ -444,6 +500,21 @@ impl PtyHandle {
         Ok(*dims)
     }
 
+    /// Check if this PTY is in tmux mode.
+    pub fn is_tmux_mode(&self) -> bool {
+        self.tmux_session.is_some()
+    }
+
+    /// Force refresh of tmux content cache on next read.
+    /// This ensures the next read will fetch fresh content from tmux.
+    pub fn invalidate_tmux_cache(&self) -> Result<()> {
+        if self.tmux_session.is_some() {
+            let mut last_content = self.last_tmux_content.lock().unwrap();
+            last_content.clear();
+        }
+        Ok(())
+    }
+
     /// Check if the child process is still running.
     pub fn is_alive(&self) -> bool {
         // Tmux mode: check if session exists
@@ -505,6 +576,11 @@ impl PtyHandle {
         // Tmux mode: kill session
         if let Some(session) = &self.tmux_session {
             use std::process::Command;
+            use std::thread;
+            use std::time::Duration;
+
+            info!("Killing tmux session: {}", session);
+
             let status = Command::new("tmux")
                 .arg("kill-session")
                 .arg("-t")
@@ -513,7 +589,29 @@ impl PtyHandle {
                 .map_err(|e| Error::PtyError(format!("Failed to kill tmux session: {e}")))?;
 
             if !status.success() {
-                return Err(Error::PtyError("Tmux kill-session failed".to_string()));
+                warn!("Tmux kill-session returned non-zero status");
+            }
+
+            // Give tmux time to clean up
+            thread::sleep(Duration::from_millis(100));
+
+            // Verify session is actually gone
+            let verify = Command::new("tmux")
+                .arg("has-session")
+                .arg("-t")
+                .arg(session)
+                .status();
+
+            match verify {
+                Ok(status) if !status.success() => {
+                    info!("Tmux session {} successfully terminated", session);
+                }
+                Ok(_) => {
+                    warn!("Tmux session {} still exists after kill attempt", session);
+                }
+                Err(e) => {
+                    debug!("Error verifying tmux session cleanup: {}", e);
+                }
             }
 
             return Ok(());
@@ -544,7 +642,7 @@ mod tests {
     fn test_pty_spawn() {
         let shell = if cfg!(windows) { "cmd.exe" } else { "/bin/sh" };
 
-        let pty = PtyHandle::spawn(shell, &[], Dimensions::new(24, 80));
+        let pty = PtyHandle::spawn(shell, &[], Dimensions::new(24, 80), None);
         assert!(pty.is_ok());
 
         let pty = pty.unwrap();
@@ -556,7 +654,7 @@ mod tests {
         let shell = if cfg!(windows) { "cmd.exe" } else { "/bin/sh" };
 
         let dims = Dimensions::new(30, 100);
-        let pty = PtyHandle::spawn(shell, &[], dims).unwrap();
+        let pty = PtyHandle::spawn(shell, &[], dims, None).unwrap();
 
         let current_dims = pty.dimensions().unwrap();
         assert_eq!(current_dims.rows, 30);
@@ -567,7 +665,7 @@ mod tests {
     fn test_pty_write_and_read() {
         let shell = if cfg!(windows) { "cmd.exe" } else { "/bin/sh" };
 
-        let pty = PtyHandle::spawn(shell, &[], Dimensions::new(24, 80)).unwrap();
+        let pty = PtyHandle::spawn(shell, &[], Dimensions::new(24, 80), None).unwrap();
 
         // Write a command
         let command: &[u8] = if cfg!(windows) {
@@ -590,7 +688,7 @@ mod tests {
     fn test_pty_resize() {
         let shell = if cfg!(windows) { "cmd.exe" } else { "/bin/sh" };
 
-        let pty = PtyHandle::spawn(shell, &[], Dimensions::new(24, 80)).unwrap();
+        let pty = PtyHandle::spawn(shell, &[], Dimensions::new(24, 80), None).unwrap();
 
         // Resize
         let new_dims = Dimensions::new(40, 120);
@@ -607,7 +705,7 @@ mod tests {
     fn test_pty_kill() {
         let shell = if cfg!(windows) { "cmd.exe" } else { "/bin/sh" };
 
-        let pty = PtyHandle::spawn(shell, &[], Dimensions::new(24, 80)).unwrap();
+        let pty = PtyHandle::spawn(shell, &[], Dimensions::new(24, 80), None).unwrap();
         assert!(pty.is_alive());
 
         // Kill the process
@@ -624,7 +722,7 @@ mod tests {
     async fn test_pty_read_async() {
         let shell = if cfg!(windows) { "cmd.exe" } else { "/bin/sh" };
 
-        let pty = PtyHandle::spawn(shell, &[], Dimensions::new(24, 80)).unwrap();
+        let pty = PtyHandle::spawn(shell, &[], Dimensions::new(24, 80), None).unwrap();
         let mut rx = pty.read_async();
 
         // Write a command

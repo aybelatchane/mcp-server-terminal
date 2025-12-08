@@ -28,6 +28,7 @@ fn test_create_visual_session_auto() {
         Dimensions::new(24, 80),
         SessionMode::Visual,
         None, // Auto-detect
+        None, // cwd
     );
 
     // May fail if no terminal emulator is available on the test system
@@ -58,6 +59,7 @@ fn test_create_visual_session_specific_terminal() {
         Dimensions::new(24, 80),
         SessionMode::Visual,
         Some("nonexistent-terminal".to_string()),
+        None, // cwd
     );
 
     // Should fail because terminal doesn't exist
@@ -77,6 +79,7 @@ fn test_session_mode_backward_compatibility() {
         Dimensions::new(24, 80),
         SessionMode::Headless,
         None,
+        None, // cwd
     );
     assert!(session2.is_ok());
 

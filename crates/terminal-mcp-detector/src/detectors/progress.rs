@@ -55,6 +55,7 @@ impl ProgressDetector {
         let mut start = None;
         let mut filled_count = 0;
         let mut empty_count = 0;
+        let mut has_block_chars = false; // Track if we see actual block characters
 
         for (i, &ch) in chars.iter().enumerate() {
             let is_filled = self.filled_chars.contains(&ch);
@@ -67,13 +68,22 @@ impl ProgressDetector {
 
                 if is_filled {
                     filled_count += 1;
+                    // Check if it's an actual block character, not just punctuation
+                    if ch == '█' || ch == '▓' || ch == '▒' || ch == '#' {
+                        has_block_chars = true;
+                    }
                 } else {
                     empty_count += 1;
+                    // Also check empty block characters
+                    if ch == '░' || ch == '▁' {
+                        has_block_chars = true;
+                    }
                 }
             } else if start.is_some() {
                 // End of progress bar
                 let total = filled_count + empty_count;
-                if total >= self.min_length {
+                // Only return if we saw actual block characters and length is sufficient
+                if total >= self.min_length && has_block_chars {
                     let percent = ((filled_count as f32 / total as f32) * 100.0) as u8;
                     let ref_id = format!("progress_{row}_{}", start.unwrap());
 
@@ -92,13 +102,15 @@ impl ProgressDetector {
                 start = None;
                 filled_count = 0;
                 empty_count = 0;
+                has_block_chars = false;
             }
         }
 
         // Check if bar extends to end of line
         if let Some(start_pos) = start {
             let total = filled_count + empty_count;
-            if total >= self.min_length {
+            // Only return if we saw actual block characters and length is sufficient
+            if total >= self.min_length && has_block_chars {
                 let percent = ((filled_count as f32 / total as f32) * 100.0) as u8;
                 let ref_id = format!("progress_{row}_{start_pos}");
 
