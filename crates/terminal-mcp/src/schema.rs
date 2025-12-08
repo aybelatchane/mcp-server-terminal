@@ -30,9 +30,7 @@ impl SchemaTransformer {
     ///
     /// This is a convenience wrapper around `transform` that works with
     /// serde_json::Map directly.
-    pub fn transform_map(
-        schema: serde_json::Map<String, Value>,
-    ) -> serde_json::Map<String, Value> {
+    pub fn transform_map(schema: serde_json::Map<String, Value>) -> serde_json::Map<String, Value> {
         let value = Value::Object(schema);
         let transformed = Self::transform(value);
         match transformed {

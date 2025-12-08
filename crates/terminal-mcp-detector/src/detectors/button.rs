@@ -49,7 +49,8 @@ impl ButtonDetector {
             ],
             max_label_length: 30,
             shell_prompt_markers: vec![
-                "$", "#", "~", "@", ":",  // Common prompt symbols (removed ">" to allow angle brackets)
+                "$", "#", "~", "@",
+                ":", // Common prompt symbols (removed ">" to allow angle brackets)
                 "git", "main", "master", "dev", // Git branch indicators
             ],
         }

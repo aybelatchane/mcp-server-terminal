@@ -53,7 +53,12 @@ impl PtyHandle {
     /// # Ok(())
     /// # }
     /// ```
-    pub fn spawn(command: &str, args: &[String], dimensions: Dimensions, cwd: Option<String>) -> Result<Self> {
+    pub fn spawn(
+        command: &str,
+        args: &[String],
+        dimensions: Dimensions,
+        cwd: Option<String>,
+    ) -> Result<Self> {
         info!(
             "Spawning PTY: command='{}' args={:?}, dimensions={}x{}, cwd={:?}",
             command, args, dimensions.rows, dimensions.cols, cwd
@@ -222,7 +227,10 @@ impl PtyHandle {
             // If alt-screen capture returned empty or only whitespace (no alt-screen active),
             // fall back to normal screen capture
             let alt_output_is_empty = output.stdout.is_empty()
-                || output.stdout.iter().all(|&b| b == b'\n' || b == b'\r' || b == b' ' || b == b'\t');
+                || output
+                    .stdout
+                    .iter()
+                    .all(|&b| b == b'\n' || b == b'\r' || b == b' ' || b == b'\t');
 
             if alt_output_is_empty && output.status.success() {
                 output = Command::new("tmux")
@@ -258,7 +266,10 @@ impl PtyHandle {
 
             // Content changed or cache was invalidated - update cache
             if cache_was_invalidated {
-                debug!("Tmux cache was invalidated, forcing fresh read: {} bytes", new_content.len());
+                debug!(
+                    "Tmux cache was invalidated, forcing fresh read: {} bytes",
+                    new_content.len()
+                );
             } else {
                 debug!("Tmux pane content changed: {} bytes", new_content.len());
             }

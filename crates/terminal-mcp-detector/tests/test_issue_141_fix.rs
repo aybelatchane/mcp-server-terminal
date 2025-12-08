@@ -2,9 +2,7 @@
 //! Tests that shell prompts and random punctuation are not detected as UI elements
 
 use terminal_mcp_core::{Dimensions, Element, Position};
-use terminal_mcp_detector::{
-    ButtonDetector, DetectionContext, ElementDetector, ProgressDetector,
-};
+use terminal_mcp_detector::{ButtonDetector, DetectionContext, ElementDetector, ProgressDetector};
 use terminal_mcp_emulator::{Grid, Parser};
 
 fn create_grid_with_text(rows: u16, cols: u16, text: &str) -> Grid {
@@ -144,5 +142,9 @@ fn test_angle_bracket_buttons_still_work() {
     let context = DetectionContext::new(Position::new(0, 0));
     let detected = detector.detect(&grid, &context);
 
-    assert_eq!(detected.len(), 2, "Angle bracket buttons should be detected");
+    assert_eq!(
+        detected.len(),
+        2,
+        "Angle bracket buttons should be detected"
+    );
 }

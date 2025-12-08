@@ -103,9 +103,7 @@ impl Session {
 
             // Ensure tmux server is running before creating session
             use std::process::Command as StdCommand;
-            let _start_server = StdCommand::new("tmux")
-                .arg("start-server")
-                .status();  // Ignore errors - server might already be running
+            let _start_server = StdCommand::new("tmux").arg("start-server").status(); // Ignore errors - server might already be running
 
             // Create tmux session (detached)
             let tmux_output = StdCommand::new("tmux")
