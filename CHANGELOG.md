@@ -5,6 +5,25 @@ All notable changes to Terminal MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2025-12-08
+
+### Added
+- **Working directory support** - `terminal_session_create` now accepts optional `cwd` parameter to start sessions in specific directories (#138)
+- **JSON Schema transformation** - Automatic compatibility layer for AI clients requiring draft-07 schemas (Gemini support) (#129-134)
+  - Transforms `$defs` to `definitions`
+  - Simplifies nullable `anyOf` patterns
+- **Integration tests** - Comprehensive test suite for detector false positive fixes (#141)
+
+### Fixed
+- **TUI menu rendering** - Menu detector now properly joins wrapped lines before detection, fixing menu parsing in interactive applications (#140)
+- **Shell prompt false positives** - Git branch indicators like `(dev)`, `(main)` in shell prompts no longer detected as buttons (#141)
+- **Random punctuation false positives** - Dots, dashes, and asterisks in regular text no longer incorrectly detected as progress bars (#141)
+- **Buffer corruption in visual mode** - Fixed tmux pane content caching issues that caused snapshot corruption (#137)
+
+### Changed
+- **Button detector** - Removed parenthesis patterns `()` to prevent shell prompt false positives
+- **Progress detector** - Now requires actual Unicode block characters (█▓▒░) to avoid matching ASCII punctuation
+
 ## [1.0.1] - 2025-12-06
 
 ### Added

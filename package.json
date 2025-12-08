@@ -1,6 +1,6 @@
 {
   "name": "mcp-server-terminal",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "MCP server for AI agents to interact with terminal applications through structured Terminal State Tree representation",
   "keywords": [
     "mcp",
