@@ -141,7 +141,7 @@ impl SchemaTransformer {
 
         // Don't add nullable if the null type has no purpose
         // Just return the non-null type
-        if null_schema.as_object().map_or(false, |o| o.len() == 1) {
+        if null_schema.as_object().is_some_and(|o| o.len() == 1) {
             Some(type_schema.clone())
         } else {
             None
@@ -154,7 +154,7 @@ impl SchemaTransformer {
             .as_object()
             .and_then(|o| o.get("type"))
             .and_then(|t| t.as_str())
-            .map_or(false, |t| t == "null")
+            == Some("null")
     }
 }
 
