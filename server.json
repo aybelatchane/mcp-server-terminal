@@ -3,7 +3,7 @@
   "name": "io.github.aybelatchane/mcp-server-terminal",
   "title": "Terminal MCP Server",
   "description": "MCP server enabling AI agents to interact with terminal applications through structured Terminal State Tree representation. Think Playwright for terminals.",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "websiteUrl": "https://github.com/aybelatchane/mcp-server-terminal",
   "repository": {
     "source": "github",
@@ -13,7 +13,7 @@
     {
       "registryType": "npm",
       "identifier": "mcp-server-terminal",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "transport": {
         "type": "stdio"
       },
@@ -44,7 +44,7 @@
     {
       "registryType": "oci",
       "identifier": "ghcr.io/aybelatchane/mcp-server-terminal",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "registryBaseUrl": "https://ghcr.io",
       "transport": {
         "type": "stdio"
@@ -53,7 +53,7 @@
     {
       "registryType": "oci",
       "identifier": "abelatchane/mcp-server-terminal",
-      "version": "1.0.2",
+      "version": "1.0.3",
       "registryBaseUrl": "https://hub.docker.com",
       "transport": {
         "type": "stdio"
