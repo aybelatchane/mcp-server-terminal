@@ -1,0 +1,85 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
+  "name": "io.github.aybelatchane/mcp-server-terminal",
+  "title": "Terminal MCP Server",
+  "description": "MCP server enabling AI agents to interact with terminal applications through structured Terminal State Tree representation. Think Playwright for terminals.",
+  "version": "1.0.2",
+  "websiteUrl": "https://github.com/aybelatchane/mcp-server-terminal",
+  "repository": {
+    "source": "github",
+    "url": "https://github.com/aybelatchane/mcp-server-terminal"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "mcp-server-terminal",
+      "version": "1.0.2",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "DISPLAY",
+          "description": "X11 display for visual mode (Linux/WSL). Example: :0",
+          "isRequired": false,
+          "isSecret": false
+        },
+        {
+          "name": "RUST_LOG",
+          "description": "Logging level: error, warn, info, debug, trace",
+          "isRequired": false,
+          "isSecret": false,
+          "default": "info"
+        }
+      ],
+      "packageArguments": {
+        "named": {
+          "--headless": {
+            "description": "Run in headless mode without spawning visible terminal windows",
+            "isFlag": true
+          }
+        }
+      }
+    },
+    {
+      "registryType": "oci",
+      "identifier": "ghcr.io/aybelatchane/mcp-server-terminal",
+      "version": "1.0.2",
+      "registryBaseUrl": "https://ghcr.io",
+      "transport": {
+        "type": "stdio"
+      }
+    },
+    {
+      "registryType": "oci",
+      "identifier": "abelatchane/mcp-server-terminal",
+      "version": "1.0.2",
+      "registryBaseUrl": "https://hub.docker.com",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ],
+  "_meta": {
+    "io.modelcontextprotocol.registry/publisher-provided": {
+      "categories": ["terminal", "automation", "development-tools", "tui", "testing"],
+      "tags": ["rust", "terminal", "tui", "cli", "playwright", "automation", "testing", "ai-agents"],
+      "platforms": ["linux", "macos", "wsl"],
+      "architectures": ["x64", "arm64"],
+      "features": [
+        "Terminal State Tree (TST) representation",
+        "UI element detection (menus, tables, buttons, inputs)",
+        "Multi-platform PTY management",
+        "Visual mode with xterm/tmux",
+        "Headless mode for CI/automation",
+        "10 MCP tools for terminal interaction"
+      ],
+      "useCases": [
+        "Automate TUI applications with AI agents",
+        "Test terminal applications programmatically",
+        "Control CLI tools through structured interfaces",
+        "Build terminal automation workflows"
+      ]
+    }
+  }
+}
