@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.0.3] - 2025-12-10
 
+### Added
+- **Native Windows support** - Full Windows x64 support without WSL dependency (#147)
+  - Platform-specific process termination (`taskkill` on Windows, `SIGTERM` on Unix)
+  - Windows visual mode via Windows Terminal or ConHost
+  - ConPTY-based headless mode for full terminal emulation
+  - Windows x64 added to CI test matrix and release builds
+
 ### Fixed
 - **Gemini schema compatibility** - Schema transformer now removes `$schema` field to prevent draft version conflicts (#145)
   - Fixes: `no schema with key or ref "https://json-schema.org/draft/2020-12/schema"` error
