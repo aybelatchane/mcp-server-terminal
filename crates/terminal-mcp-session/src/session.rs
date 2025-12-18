@@ -82,104 +82,9 @@ impl Session {
             command, mode, dimensions.rows, dimensions.cols, terminal_emulator, cwd
         );
 
-        // In visual mode, spawn terminal connected via tmux for proper I/O control
+        // In visual mode, spawn terminal connected via tmux (Unix) or direct PTY (Windows)
         let (visual_handle, pty) = if mode == SessionMode::Visual {
-            debug!("Creating visual mode session with tmux");
-            // Generate unique tmux session name
-            let session_name = format!("terminal-mcp-{}", uuid::Uuid::new_v4());
-
-            // Build command string
-            let mut full_command = if args.is_empty() {
-                command.clone()
-            } else {
-                format!("{} {}", command, args.join(" "))
-            };
-
-            // Prepend cd command if cwd is specified
-            if let Some(ref dir) = cwd {
-                full_command = format!("cd {} && {}", dir, full_command);
-                debug!("Prepended cd command for visual mode: cd {}", dir);
-            }
-
-            // Ensure tmux server is running before creating session
-            use std::process::Command as StdCommand;
-            let _start_server = StdCommand::new("tmux").arg("start-server").status(); // Ignore errors - server might already be running
-
-            // Create tmux session (detached)
-            let tmux_output = StdCommand::new("tmux")
-                .arg("new-session")
-                .arg("-d")
-                .arg("-s")
-                .arg(&session_name)
-                .arg("-x")
-                .arg(dimensions.cols.to_string())
-                .arg("-y")
-                .arg(dimensions.rows.to_string())
-                .arg("bash")
-                .arg("-c")
-                .arg(&full_command)
-                .output();
-
-            match tmux_output {
-                Ok(output) if output.status.success() => {
-                    info!("Tmux session created: {}", session_name);
-                    // Spawn visual terminal attached to tmux session
-                    let term_name = terminal_emulator.as_deref().unwrap_or("xterm");
-
-                    // Launch visual terminal attached to tmux
-                    // Inherit all environment variables (including DISPLAY for WSLg)
-                    let visual_cmd = StdCommand::new(term_name)
-                        .arg("-e")
-                        .arg("tmux")
-                        .arg("attach-session")
-                        .arg("-t")
-                        .arg(&session_name)
-                        .spawn();
-
-                    if let Err(ref e) = visual_cmd {
-                        error!("Failed to spawn xterm: {:?}", e);
-                    }
-
-                    let handle = if let Ok(child) = visual_cmd {
-                        info!(
-                            "Visual terminal spawned: {} (pid: {})",
-                            term_name,
-                            child.id()
-                        );
-                        Some(VisualTerminalHandle::with_window_id(
-                            child.id(),
-                            term_name,
-                            session_name.clone(),
-                        ))
-                    } else {
-                        warn!("Failed to spawn visual terminal: {}", term_name);
-                        None
-                    };
-
-                    // Create PTY wrapper for tmux control
-                    let pty = PtyHandle::spawn_tmux(&session_name, dimensions)?;
-                    (handle, pty)
-                }
-                Ok(output) => {
-                    let stderr = String::from_utf8_lossy(&output.stderr);
-                    error!(
-                        "Tmux session creation failed for '{}': exit_code={:?}, stderr={}",
-                        session_name,
-                        output.status.code(),
-                        stderr
-                    );
-                    warn!("Falling back to headless PTY mode");
-                    // Fall back to regular PTY if tmux fails
-                    let pty = PtyHandle::spawn(&command, &args, dimensions, cwd.clone())?;
-                    (None, pty)
-                }
-                Err(e) => {
-                    error!("Failed to execute tmux command: {}", e);
-                    warn!("Falling back to headless PTY mode");
-                    let pty = PtyHandle::spawn(&command, &args, dimensions, cwd.clone())?;
-                    (None, pty)
-                }
-            }
+            Self::create_visual_session(&command, &args, dimensions, terminal_emulator, cwd.clone())?
         } else {
             debug!("Creating headless PTY session");
             // Headless mode: regular PTY
@@ -472,13 +377,10 @@ impl Session {
     pub fn terminate(&self) -> Result<()> {
         info!("Terminating session: id={}", self.id);
 
-        // Kill the visual terminal (xterm) if present
+        // Kill the visual terminal if present
         if let Some(handle) = &self.visual_handle {
             info!("Killing visual terminal: pid={}", handle.pid);
-            unsafe {
-                // Send SIGTERM to the xterm process
-                libc::kill(handle.pid as i32, libc::SIGTERM);
-            }
+            Self::kill_process(handle.pid);
         }
 
         // Kill the PTY/tmux session
@@ -491,6 +393,144 @@ impl Session {
         self.set_status(SessionStatus::Terminated);
         info!("Session terminated successfully: id={}", self.id);
         Ok(())
+    }
+
+    /// Kill a process by PID (platform-specific implementation).
+    #[cfg(unix)]
+    fn kill_process(pid: u32) {
+        unsafe {
+            libc::kill(pid as i32, libc::SIGTERM);
+        }
+    }
+
+    /// Kill a process by PID (Windows implementation).
+    #[cfg(windows)]
+    fn kill_process(pid: u32) {
+        use std::process::Command;
+        // Use taskkill on Windows to terminate the process
+        let _ = Command::new("taskkill")
+            .args(["/PID", &pid.to_string(), "/F"])
+            .output();
+    }
+
+    /// Create a visual mode session (Unix implementation using tmux).
+    #[cfg(unix)]
+    fn create_visual_session(
+        command: &str,
+        args: &[String],
+        dimensions: Dimensions,
+        terminal_emulator: Option<String>,
+        cwd: Option<String>,
+    ) -> Result<(Option<VisualTerminalHandle>, PtyHandle)> {
+        use std::process::Command as StdCommand;
+
+        debug!("Creating visual mode session with tmux");
+        // Generate unique tmux session name
+        let session_name = format!("terminal-mcp-{}", uuid::Uuid::new_v4());
+
+        // Build command string
+        let mut full_command = if args.is_empty() {
+            command.to_string()
+        } else {
+            format!("{} {}", command, args.join(" "))
+        };
+
+        // Prepend cd command if cwd is specified
+        if let Some(ref dir) = cwd {
+            full_command = format!("cd {} && {}", dir, full_command);
+            debug!("Prepended cd command for visual mode: cd {}", dir);
+        }
+
+        // Ensure tmux server is running before creating session
+        let _start_server = StdCommand::new("tmux").arg("start-server").status();
+
+        // Create tmux session (detached)
+        let tmux_output = StdCommand::new("tmux")
+            .arg("new-session")
+            .arg("-d")
+            .arg("-s")
+            .arg(&session_name)
+            .arg("-x")
+            .arg(dimensions.cols.to_string())
+            .arg("-y")
+            .arg(dimensions.rows.to_string())
+            .arg("bash")
+            .arg("-c")
+            .arg(&full_command)
+            .output();
+
+        match tmux_output {
+            Ok(output) if output.status.success() => {
+                info!("Tmux session created: {}", session_name);
+                // Spawn visual terminal attached to tmux session
+                let term_name = terminal_emulator.as_deref().unwrap_or("xterm");
+
+                // Launch visual terminal attached to tmux
+                let visual_cmd = StdCommand::new(term_name)
+                    .arg("-e")
+                    .arg("tmux")
+                    .arg("attach-session")
+                    .arg("-t")
+                    .arg(&session_name)
+                    .spawn();
+
+                if let Err(ref e) = visual_cmd {
+                    error!("Failed to spawn {}: {:?}", term_name, e);
+                }
+
+                let handle = if let Ok(child) = visual_cmd {
+                    info!("Visual terminal spawned: {} (pid: {})", term_name, child.id());
+                    Some(VisualTerminalHandle::with_window_id(
+                        child.id(),
+                        term_name,
+                        session_name.clone(),
+                    ))
+                } else {
+                    warn!("Failed to spawn visual terminal: {}", term_name);
+                    None
+                };
+
+                // Create PTY wrapper for tmux control
+                let pty = PtyHandle::spawn_tmux(&session_name, dimensions)?;
+                Ok((handle, pty))
+            }
+            Ok(output) => {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                error!(
+                    "Tmux session creation failed for '{}': exit_code={:?}, stderr={}",
+                    session_name,
+                    output.status.code(),
+                    stderr
+                );
+                warn!("Falling back to headless PTY mode");
+                let pty = PtyHandle::spawn(command, args, dimensions, cwd)?;
+                Ok((None, pty))
+            }
+            Err(e) => {
+                error!("Failed to execute tmux command: {}", e);
+                warn!("Falling back to headless PTY mode");
+                let pty = PtyHandle::spawn(command, args, dimensions, cwd)?;
+                Ok((None, pty))
+            }
+        }
+    }
+
+    /// Create a visual mode session (Windows implementation).
+    /// Note: Visual mode on Windows currently falls back to headless PTY.
+    /// Full visual mode support with Windows Terminal is planned for a future release.
+    #[cfg(windows)]
+    fn create_visual_session(
+        command: &str,
+        args: &[String],
+        dimensions: Dimensions,
+        _terminal_emulator: Option<String>,
+        cwd: Option<String>,
+    ) -> Result<(Option<VisualTerminalHandle>, PtyHandle)> {
+        // TODO: Implement Windows visual mode with Windows Terminal / ConPTY
+        // For now, fall back to headless PTY mode on Windows
+        warn!("Visual mode not yet supported on Windows, falling back to headless PTY");
+        let pty = PtyHandle::spawn(command, args, dimensions, cwd)?;
+        Ok((None, pty))
     }
 
     /// Start recording the session.
