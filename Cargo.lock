@@ -1268,7 +1268,7 @@ dependencies = [
 
 [[package]]
 name = "terminal-mcp"
-version = "1.0.1"
+version = "1.0.3"
 dependencies = [
  "anyhow",
  "rmcp",
@@ -1288,7 +1288,7 @@ dependencies = [
 
 [[package]]
 name = "terminal-mcp-core"
-version = "1.0.1"
+version = "1.0.3"
 dependencies = [
  "regex",
  "schemars",
@@ -1301,7 +1301,7 @@ dependencies = [
 
 [[package]]
 name = "terminal-mcp-detector"
-version = "1.0.1"
+version = "1.0.3"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1320,7 +1320,7 @@ dependencies = [
 
 [[package]]
 name = "terminal-mcp-emulator"
-version = "1.0.1"
+version = "1.0.3"
 dependencies = [
  "anyhow",
  "libc",
@@ -1337,7 +1337,7 @@ dependencies = [
 
 [[package]]
 name = "terminal-mcp-session"
-version = "1.0.1"
+version = "1.0.3"
 dependencies = [
  "anyhow",
  "libc",
