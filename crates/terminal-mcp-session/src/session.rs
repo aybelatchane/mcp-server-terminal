@@ -516,21 +516,76 @@ impl Session {
     }
 
     /// Create a visual mode session (Windows implementation).
-    /// Note: Visual mode on Windows currently falls back to headless PTY.
-    /// Full visual mode support with Windows Terminal is planned for a future release.
+    ///
+    /// On Windows, visual mode spawns two separate processes:
+    /// 1. A visible terminal window (Windows Terminal, PowerShell, or cmd.exe) for the user to observe
+    /// 2. A headless PTY for programmatic control by the AI
+    ///
+    /// Note: These are separate process instances. The AI controls the PTY instance while
+    /// the user observes the visual terminal instance. This is a limitation of Windows
+    /// not having a tmux-like multiplexer.
     #[cfg(windows)]
     fn create_visual_session(
         command: &str,
         args: &[String],
         dimensions: Dimensions,
-        _terminal_emulator: Option<String>,
+        terminal_emulator: Option<String>,
         cwd: Option<String>,
     ) -> Result<(Option<VisualTerminalHandle>, PtyHandle)> {
-        // TODO: Implement Windows visual mode with Windows Terminal / ConPTY
-        // For now, fall back to headless PTY mode on Windows
-        warn!("Visual mode not yet supported on Windows, falling back to headless PTY");
+        use crate::visual::registry::TerminalRegistry;
+
+        debug!("Creating Windows visual mode session");
+
+        // Build full command with working directory if specified
+        let (spawn_cmd, spawn_args) = if let Some(ref dir) = cwd {
+            // On Windows, prepend cd command
+            let cd_cmd = format!("cd /d \"{}\" && {}", dir, command);
+            ("cmd.exe".to_string(), vec!["/c".to_string(), cd_cmd])
+        } else {
+            (command.to_string(), args.to_vec())
+        };
+
+        // Try to spawn a visible terminal window for the user to observe
+        let registry = TerminalRegistry::new();
+        let visual_handle = if let Some(term_name) = terminal_emulator {
+            // User requested specific terminal
+            match registry.spawn_with(&term_name, &spawn_cmd, &spawn_args, dimensions) {
+                Ok(handle) => {
+                    info!("Visual terminal spawned: {} (pid: {})", term_name, handle.pid);
+                    Some(handle)
+                }
+                Err(e) => {
+                    warn!("Failed to spawn requested terminal '{}': {}", term_name, e);
+                    None
+                }
+            }
+        } else {
+            // Use best available terminal
+            match registry.spawn_best(&spawn_cmd, &spawn_args, dimensions) {
+                Ok(handle) => {
+                    info!("Visual terminal spawned: {} (pid: {})", handle.terminal_name, handle.pid);
+                    Some(handle)
+                }
+                Err(e) => {
+                    warn!("Failed to spawn visual terminal: {}", e);
+                    None
+                }
+            }
+        };
+
+        // Spawn headless PTY for programmatic control
         let pty = PtyHandle::spawn(command, args, dimensions, cwd)?;
-        Ok((None, pty))
+
+        if visual_handle.is_some() {
+            info!(
+                "Windows visual mode: spawned separate visual terminal and PTY for control. \
+                 Note: These are independent processes."
+            );
+        } else {
+            warn!("Visual mode requested but no terminal available, using headless PTY only");
+        }
+
+        Ok((visual_handle, pty))
     }
 
     /// Start recording the session.
