@@ -17,10 +17,12 @@ impl SchemaTransformer {
     /// Transform a JSON Schema for maximum AI client compatibility.
     ///
     /// Applies transformations in sequence:
-    /// 1. Convert `$defs` to `definitions`
-    /// 2. Simplify `anyOf` with nullable patterns
-    /// 3. Update references to use `definitions`
+    /// 1. Remove `$schema` field (avoid draft version conflicts)
+    /// 2. Convert `$defs` to `definitions`
+    /// 3. Simplify `anyOf` with nullable patterns
+    /// 4. Update references to use `definitions`
     pub fn transform(mut schema: Value) -> Value {
+        schema = Self::remove_schema_field(schema);
         schema = Self::convert_defs_to_definitions(schema);
         schema = Self::simplify_nullable_anyof(schema);
         schema
@@ -37,6 +39,19 @@ impl SchemaTransformer {
             Value::Object(map) => map,
             _ => unreachable!("transform should always return an Object"),
         }
+    }
+
+    /// Remove the `$schema` field to avoid draft version conflicts.
+    ///
+    /// Schemars 1.1 generates schemas with `$schema` set to draft-2020-12,
+    /// but some AI clients (like Gemini) only support draft-07 and reject
+    /// schemas with unsupported draft versions. Removing the field entirely
+    /// allows clients to interpret the schema without version constraints.
+    fn remove_schema_field(mut schema: Value) -> Value {
+        if let Some(obj) = schema.as_object_mut() {
+            obj.remove("$schema");
+        }
+        schema
     }
 
     /// Convert `$defs` to `definitions` for draft-07 compatibility.
@@ -164,6 +179,23 @@ mod tests {
     use serde_json::json;
 
     #[test]
+    fn test_remove_schema_field() {
+        let schema = json!({
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"}
+            }
+        });
+
+        let result = SchemaTransformer::remove_schema_field(schema);
+
+        assert!(result["$schema"].is_null());
+        assert_eq!(result["type"], "object");
+        assert!(result["properties"]["name"].is_object());
+    }
+
+    #[test]
     fn test_convert_defs_to_definitions() {
         let schema = json!({
             "$defs": {
@@ -206,6 +238,7 @@ mod tests {
     #[test]
     fn test_transform_full() {
         let schema = json!({
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
             "$defs": {
                 "Dimensions": {
                     "type": "object",
@@ -229,6 +262,9 @@ mod tests {
         });
 
         let result = SchemaTransformer::transform(schema);
+
+        // Check $schema removed
+        assert!(result["$schema"].is_null());
 
         // Check $defs → definitions
         assert!(result["$defs"].is_null());
