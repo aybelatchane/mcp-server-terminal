@@ -35,3 +35,13 @@ package-lock.json
 .claude/*
 .gemini/*
 .playwright-mcp/
+
+# Registry publishing artifacts
+.mcpregistry_*
+mcp-publisher_*.pem
+mcp-publisher_*.tar.gz
+mcp-publisher_*.tar.gz.*
+registry_*.pem
+registry_*.tar.gz
+registry_*.tar.gz.*
+publish-*.txt
