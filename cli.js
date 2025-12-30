@@ -19,14 +19,15 @@ const BINARY_PATH = path.join(CACHE_DIR, BINARY_NAME);
 const VERSION_FILE = path.join(CACHE_DIR, "version.txt");
 
 // Map Node.js platform/arch to Rust target triples
+// Linux uses musl for fully static binaries (works on all distros regardless of glibc version)
 const PLATFORM_MAPPING = {
   darwin: {
     x64: "x86_64-apple-darwin",
     arm64: "aarch64-apple-darwin",
   },
   linux: {
-    x64: "x86_64-unknown-linux-gnu",
-    arm64: "aarch64-unknown-linux-gnu",
+    x64: "x86_64-unknown-linux-musl",
+    arm64: "aarch64-unknown-linux-musl",
   },
 };
 
