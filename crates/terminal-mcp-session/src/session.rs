@@ -462,6 +462,17 @@ impl Session {
         match tmux_output {
             Ok(output) if output.status.success() => {
                 info!("Tmux session created: {}", session_name);
+
+                // Set remain-on-exit so session stays alive after command exits
+                // This prevents "session no longer exists" errors when commands complete
+                let _ = StdCommand::new("tmux")
+                    .arg("set-option")
+                    .arg("-t")
+                    .arg(&session_name)
+                    .arg("remain-on-exit")
+                    .arg("on")
+                    .output();
+
                 // Spawn visual terminal attached to tmux session
                 let term_name = terminal_emulator.as_deref().unwrap_or("xterm");
 

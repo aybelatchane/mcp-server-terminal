@@ -289,6 +289,16 @@ impl VisualTerminal for Tmux {
             .spawn()
             .map_err(|e| Error::Other(format!("Failed to create tmux session: {e}")))?;
 
+        // Set remain-on-exit so session stays alive after command exits
+        // This prevents "session no longer exists" errors when commands complete
+        let _ = Command::new("tmux")
+            .arg("set-option")
+            .arg("-t")
+            .arg(&session_name)
+            .arg("remain-on-exit")
+            .arg("on")
+            .spawn();
+
         // Return handle with session name as window_id
         Ok(VisualTerminalHandle::with_window_id(
             0,
