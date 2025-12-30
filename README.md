@@ -288,20 +288,12 @@ Logs go to stderr (stdout is reserved for MCP protocol).
 
 | Platform | Architecture | Status | Visual Mode |
 |----------|--------------|--------|-------------|
-| Linux | x64, arm64 | ✅ Supported | xterm + tmux |
-| macOS | x64, arm64 | ✅ Supported | Terminal.app / iTerm2 |
-| Windows | x64 | ✅ Supported | Windows Terminal / ConHost |
-| WSL | x64, arm64 | ✅ Supported | xterm + tmux (via X11) |
+| Linux | x64, arm64 | ✅ Full support | xterm + tmux |
+| macOS | x64, arm64 | ✅ Full support | Terminal.app / iTerm2 |
+| Windows (WSL) | x64, arm64 | ✅ Full support | xterm + tmux (via X11) |
+| Windows (native) | x64 | ⚠️ Headless only | Not supported |
 
-### Windows Notes
-
-Windows support is native (not WSL-dependent). Key differences:
-
-- **Visual mode**: Spawns Windows Terminal or ConHost in a separate window
-- **Headless mode**: Full functionality via ConPTY
-- **Process termination**: Uses `taskkill` instead of Unix signals
-
-For WSL users, see the [X11 Setup](#x11-setup-linuxwsl) section.
+> **Windows users:** Use WSL for full functionality including visual mode.
 
 ## License
 
