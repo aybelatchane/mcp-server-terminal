@@ -5,6 +5,20 @@ All notable changes to Terminal MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2025-12-30
+
+### Fixed
+- **CI/CD Windows build** - Added `shell: bash` to Windows build step to fix PowerShell syntax errors in release workflow
+- **Tmux session persistence** - Added `remain-on-exit on` option to prevent "session no longer exists" errors when commands exit (#153)
+
+### Changed
+- **Linux binaries now use musl** - Switched from glibc to musl for fully static Linux binaries, fixing GLIBC version compatibility issues on older distributions (#152)
+
+## [1.0.4] - 2025-12-30
+
+### Fixed
+- **GLIBC 2.39 dependency** - Linux binaries now statically linked with musl, works on Ubuntu 22.04 and other older distributions (#152)
+
 ## [1.0.3] - 2025-12-10
 
 ### Added
@@ -73,5 +87,9 @@ Terminal MCP Server v1.0.0 is production-ready with complete feature set, compre
 - **Zero unsafe code** - Memory-safe Rust
 - **242 tests passing** with 100% pass rate
 
+[1.0.5]: https://github.com/aybelatchane/mcp-server-terminal/releases/tag/v1.0.5
+[1.0.4]: https://github.com/aybelatchane/mcp-server-terminal/releases/tag/v1.0.4
+[1.0.3]: https://github.com/aybelatchane/mcp-server-terminal/releases/tag/v1.0.3
+[1.0.2]: https://github.com/aybelatchane/mcp-server-terminal/releases/tag/v1.0.2
 [1.0.1]: https://github.com/aybelatchane/mcp-server-terminal/releases/tag/v1.0.1
 [1.0.0]: https://github.com/aybelatchane/mcp-server-terminal/releases/tag/v1.0.0
