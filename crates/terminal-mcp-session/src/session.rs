@@ -84,7 +84,13 @@ impl Session {
 
         // In visual mode, spawn terminal connected via tmux (Unix) or direct PTY (Windows)
         let (visual_handle, pty) = if mode == SessionMode::Visual {
-            Self::create_visual_session(&command, &args, dimensions, terminal_emulator, cwd.clone())?
+            Self::create_visual_session(
+                &command,
+                &args,
+                dimensions,
+                terminal_emulator,
+                cwd.clone(),
+            )?
         } else {
             debug!("Creating headless PTY session");
             // Headless mode: regular PTY
@@ -490,7 +496,11 @@ impl Session {
                 }
 
                 let handle = if let Ok(child) = visual_cmd {
-                    info!("Visual terminal spawned: {} (pid: {})", term_name, child.id());
+                    info!(
+                        "Visual terminal spawned: {} (pid: {})",
+                        term_name,
+                        child.id()
+                    );
                     Some(VisualTerminalHandle::with_window_id(
                         child.id(),
                         term_name,
@@ -562,7 +572,10 @@ impl Session {
             // User requested specific terminal
             match registry.spawn_with(&term_name, &spawn_cmd, &spawn_args, dimensions) {
                 Ok(handle) => {
-                    info!("Visual terminal spawned: {} (pid: {})", term_name, handle.pid);
+                    info!(
+                        "Visual terminal spawned: {} (pid: {})",
+                        term_name, handle.pid
+                    );
                     Some(handle)
                 }
                 Err(e) => {
@@ -574,7 +587,10 @@ impl Session {
             // Use best available terminal
             match registry.spawn_best(&spawn_cmd, &spawn_args, dimensions) {
                 Ok(handle) => {
-                    info!("Visual terminal spawned: {} (pid: {})", handle.terminal_name, handle.pid);
+                    info!(
+                        "Visual terminal spawned: {} (pid: {})",
+                        handle.terminal_name, handle.pid
+                    );
                     Some(handle)
                 }
                 Err(e) => {
