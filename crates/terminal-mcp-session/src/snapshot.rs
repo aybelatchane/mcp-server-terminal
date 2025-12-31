@@ -141,6 +141,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_snapshot() {
         let session = Session::create(
             "echo".to_string(),
@@ -164,6 +165,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_wait_for_idle() {
         let session = Session::create(
             "echo".to_string(),
@@ -188,6 +190,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_snapshot_with_custom_config() {
         let session = Session::create(
             "echo".to_string(),
@@ -210,6 +213,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_snapshot_with_idle_bash_no_hang() {
         // Regression test for #99: terminal_snapshot should not hang on idle shells
         let session = Session::create("bash".to_string(), vec![], Dimensions::new(24, 80)).unwrap();
