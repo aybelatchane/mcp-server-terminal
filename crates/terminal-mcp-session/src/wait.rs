@@ -292,6 +292,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_wait_for_idle_always_succeeds() {
         let session = Session::create(
             "echo".to_string(),
@@ -316,6 +317,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_wait_for_text_appears() {
         let session = Session::create(
             "echo".to_string(),
@@ -346,6 +348,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn test_wait_for_text_timeout() {
         let session = Session::create(
             "echo".to_string(),
