@@ -12,7 +12,7 @@ Thank you for your interest in contributing!
 ### Setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/terminal-mcp.git
+git clone https://github.com/aybelatchane/terminal-mcp.git
 cd terminal-mcp
 cargo build
 cargo test
