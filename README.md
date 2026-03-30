@@ -6,6 +6,10 @@
 
 MCP server enabling AI agents to interact with terminal applications through structured Terminal State Tree representation. Works with any AI assistant that supports the [Model Context Protocol](https://modelcontextprotocol.io/).
 
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/aybelatchane-mcp-server-terminal).
+
 ## Installation
 
 ### Via npm (Recommended)
